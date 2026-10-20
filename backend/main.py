@@ -4,6 +4,7 @@ import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import exists, func
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +23,14 @@ from models import (
 )
 
 app = FastAPI(title="paper-shelf API")
+
+# ブラウザ（localhost:3000 の frontend）から直接 fetch できるようにする
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(RequestValidationError)
