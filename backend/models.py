@@ -90,3 +90,20 @@ class PaperRead(SQLModel):
 class TagCount(SQLModel):
     name: str
     count: int
+
+class YearCount(SQLModel):
+    year: int
+    count: int
+
+class GraphNode(SQLModel):
+    id: str
+    count: int
+
+class GraphEdge(SQLModel):
+    source: str
+    target: str
+    weight: int
+
+class Graph(SQLModel):
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]

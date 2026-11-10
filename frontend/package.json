@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "d3-force": "^3.0.1",
     "katex": "^0.19.0",
     "next": "16.3.8",
     "react": "19.2.8",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/d3-force": "^3.0.10",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

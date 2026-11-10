@@ -1,3 +1,5 @@
+from collections import Counter
+from itertools import combinations
 from typing import Literal
 
 import httpx
@@ -13,12 +15,16 @@ from sqlmodel import Session, col, or_, select
 from arxiv import fetch_paper, is_valid_arxiv_id, normalize_arxiv_id
 from db import get_session
 from models import (
+    Graph,
+    GraphEdge,
+    GraphNode,
     Paper,
     PaperCreate,
     PaperRead,
     PaperUpdate,
     Status,
     TagCount,
+    YearCount,
     normalize_tags,
 )
 
@@ -163,3 +169,44 @@ def list_tags(session: Session = Depends(get_session)):
         .order_by(func.count().desc(), sub.c.name)
     )
     return [TagCount(name=n, count=c) for n, c in session.exec(stmt).all()]
+
+
+@app.get("/stats/years", response_model=list[YearCount])
+def stats_years(session: Session = Depends(get_session)):
+    # SELECT extract(year FROM published) AS year, count(*) FROM papers GROUP BY year
+    year = func.extract("year", Paper.published).label("year")
+    stmt = select(year, func.count().label("count")).group_by(year).order_by(year)
+    return [YearCount(year=int(y), count=c) for y, c in session.exec(stmt).all()]
+
+
+def cooccurrence_graph(groups: list[list[str]], min_count: int = 1) -> Graph:
+    """
+    groups は「一緒に出てきた名前の組」の一覧（論文ごとのタグや著者）。
+    min_count 本以上に出てくる名前をノードにし、同じ論文に出てきた 2 つを線で結ぶ
+    """
+    counts = Counter(name for g in groups for name in set(g))
+    keep = {name for name, c in counts.items() if c >= min_count}
+    weights: Counter[tuple[str, str]] = Counter()
+    for g in groups:
+        for a, b in combinations(sorted(set(g) & keep), 2):
+            weights[(a, b)] += 1
+    return Graph(
+        nodes=[GraphNode(id=n, count=counts[n]) for n in sorted(keep, key=lambda n: (-counts[n], n))],
+        edges=[GraphEdge(source=a, target=b, weight=w) for (a, b), w in weights.items()],
+    )
+
+
+@app.get("/graph/tags", response_model=Graph)
+def graph_tags(session: Session = Depends(get_session)):
+    return cooccurrence_graph(list(session.exec(select(Paper.tags)).all()))
+
+
+@app.get("/graph/authors", response_model=Graph)
+def graph_authors(
+    max_authors: int = Query(default=20, ge=1),
+    min_papers: int = Query(default=2, ge=1),
+    session: Session = Depends(get_session),
+):
+    # 著者が何百人もいる論文が 1 本あるだけでグラフが埋まるので、max_authors 人を超える論文は除く
+    groups = [a for a in session.exec(select(Paper.authors)).all() if len(a) <= max_authors]
+    return cooccurrence_graph(groups, min_papers)

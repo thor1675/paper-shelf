@@ -48,3 +48,25 @@ body {
 }
 .markdown li.task-list-item { list-style: none; margin-left: -1.25em; }
 .markdown li.task-list-item input { margin-right: 0.4em; }
+
+/* 図の色。データの色は青 1 色だけで、文字や軸は灰色の文字色を使う */
+:root {
+  --viz-mark: #2a78d6;
+  --viz-ink: #0b0b0b;
+  --viz-ink-2: #52514e;
+  --viz-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-edge: #c3c2b7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --viz-mark: #3987e5;
+    --viz-ink: #f0efec;
+    --viz-ink-2: #c3c2b7;
+    --viz-muted: #898781;
+    --viz-grid: #2c2c2a;
+    --viz-axis: #383835;
+    --viz-edge: #4a4a46;
+  }
+}
