@@ -1,0 +1,25 @@
+# Slack の「Create New App → From an app manifest」にこの内容を貼り付ける
+display_information:
+  name: paper-shelf
+  description: 貼られた arXiv のリンクを paper-shelf に保存する
+features:
+  bot_user:
+    display_name: paper-shelf
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+      - channels:history   # 公開チャンネルのメッセージを読む
+      - groups:history     # 招待された非公開チャンネルのメッセージを読む
+      - channels:read      # チャンネル名を調べる（メモ用）
+      - groups:read
+      - users:read         # 投稿者の名前を調べる（メモ用）
+      - reactions:write    # ✅ などを付ける
+settings:
+  event_subscriptions:
+    bot_events:
+      - message.channels
+      - message.groups
+  socket_mode_enabled: true
+  org_deploy_enabled: false
+  token_rotation_enabled: false

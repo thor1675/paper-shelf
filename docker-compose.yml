@@ -25,6 +25,19 @@ services:
       db:
         condition: service_healthy
 
+  slackbot:
+    build: ./slackbot
+    volumes:
+      - ./slackbot:/app
+    environment:
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
+      - API_URL=http://backend:8000
+    depends_on:
+      - backend
+    # トークン未設定なら正常終了（再起動しない）、異常終了なら再起動
+    restart: on-failure
+
   db:
     image: postgres:18
     volumes:
