@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { connection } from "next/server";
 
-import { type Paper, SERVER_API_URL, STATUS_LABELS } from "@/lib/api";
+import { type Paper, SERVER_API_URL } from "@/lib/api";
 
 import AddPaperForm from "./AddPaperForm";
+import StatusSelect from "./StatusSelect";
 
 async function getPapers(): Promise<Paper[] | null> {
   try {
@@ -42,17 +44,10 @@ export default async function Home() {
               className="rounded border border-zinc-200 p-4 dark:border-zinc-800"
             >
               <div className="flex items-start justify-between gap-3">
-                <a
-                  href={p.arxiv_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold hover:underline"
-                >
+                <Link href={`/papers/${p.id}`} className="font-semibold hover:underline">
                   {p.title}
-                </a>
-                <span className="shrink-0 rounded bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-800">
-                  {STATUS_LABELS[p.status]}
-                </span>
+                </Link>
+                <StatusSelect paperId={p.id} status={p.status} />
               </div>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                 {formatAuthors(p.authors)} · {p.published} · arXiv:{p.arxiv_id}

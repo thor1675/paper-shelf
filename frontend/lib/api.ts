@@ -1,4 +1,5 @@
-export type Status = "unread" | "reading" | "read";
+export const STATUSES = ["unread", "reading", "read"] as const;
+export type Status = (typeof STATUSES)[number];
 
 export type Paper = {
   id: number;
@@ -14,6 +15,8 @@ export type Paper = {
   arxiv_url: string;
   pdf_url: string;
 };
+
+export type TagCount = { name: string; count: number };
 
 export const STATUS_LABELS: Record<Status, string> = {
   unread: "未読",
@@ -39,4 +42,10 @@ export async function errorMessage(res: Response): Promise<string> {
     // JSON でない応答
   }
   return `エラーが発生しました（${res.status}）`;
+}
+
+// backend の normalize_tags と同じ規則（小文字・前後の空白除去・空文字と重複の除去）
+export function addTag(tags: string[], raw: string): string[] {
+  const t = raw.trim().toLowerCase();
+  return t && !tags.includes(t) ? [...tags, t] : tags;
 }
