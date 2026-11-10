@@ -9,4 +9,5 @@ RUN uv pip install --system --no-cache -r requirements.txt
 
 COPY . .
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# 起動のたびに未適用のマイグレーションを当ててから API を立ち上げる
+CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"]

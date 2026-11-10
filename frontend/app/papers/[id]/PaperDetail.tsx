@@ -167,7 +167,20 @@ export default function PaperDetail({
           )}
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {paper.authors.join(", ")}
+          {paper.authors.map((a, i) => (
+            <span key={a}>
+              {i > 0 && ", "}
+              <Link
+                href={`/?author=${encodeURIComponent(a)}`}
+                className="hover:underline"
+                onNavigate={(e) => {
+                  if (dirty && !confirm(UNSAVED_MESSAGE)) e.preventDefault();
+                }}
+              >
+                {a}
+              </Link>
+            </span>
+          ))}
         </p>
         <p className="flex flex-wrap gap-x-3 text-sm text-zinc-600 dark:text-zinc-400">
           <span>{paper.published}</span>
