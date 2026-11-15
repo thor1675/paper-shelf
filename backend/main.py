@@ -1,10 +1,9 @@
+import re
 from collections import Counter
 from itertools import combinations
 from typing import Literal
 
-import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
-from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,7 +11,13 @@ from sqlalchemy import exists, func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, or_, select
 
-from arxiv import fetch_paper, is_valid_arxiv_id, normalize_arxiv_id
+from arxiv import (
+    ArxivUnavailable,
+    PaperNotFound,
+    fetch_paper,
+    is_valid_arxiv_id,
+    normalize_arxiv_id,
+)
 from db import get_session
 from models import (
     Graph,
@@ -41,14 +46,47 @@ app.add_middleware(
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError):
-    # 受け付けない項目が送られてきたときは、どの項目が駄目なのかを日本語で返す
-    extra = [str(e["loc"][-1]) for e in exc.errors() if e["type"] == "extra_forbidden"]
-    if extra:
-        return JSONResponse(
-            status_code=422,
-            content={"detail": f"受け付けていない項目です: {', '.join(extra)}"},
-        )
-    return await request_validation_exception_handler(request, exc)
+    # FastAPI 標準の英語のエラーを、どの項目がなぜ駄目なのかが分かる日本語 1 文にする
+    errors = exc.errors()
+    # 受け付けない項目は 1 文にまとめる（「受け付けていない項目です: title, authors」）
+    extra = [str(e["loc"][-1]) for e in errors if e["type"] == "extra_forbidden"]
+    messages = [f"受け付けていない項目です: {', '.join(extra)}"] if extra else []
+    messages += [validation_message(e) for e in errors if e["type"] != "extra_forbidden"]
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": " / ".join(dict.fromkeys(messages)),  # 同じ文は 1 回だけ
+            "errors": [{"loc": list(e["loc"]), "type": e["type"]} for e in errors],
+        },
+    )
+
+
+def validation_message(e: dict) -> str:
+    # loc は ("body", "tags", 0) のようにリストの番号で終わることがあるので、最後の名前を使う
+    field = next((x for x in reversed(e["loc"]) if isinstance(x, str)), "")
+    ctx = e.get("ctx") or {}
+    match e["type"]:
+        case "missing":
+            return f"「{field}」がありません"
+        case "literal_error":
+            # pydantic の "'unread', 'reading' or 'read'" を "unread / reading / read" にする
+            choices = re.sub(r"'|\bor\b", "", str(ctx.get("expected", ""))).replace(",", " ")
+            return f"「{field}」は {' / '.join(choices.split())} のどれかにしてください"
+        case "int_parsing" | "int_type":
+            return f"「{field}」は整数にしてください"
+        case "greater_than_equal":
+            return f"「{field}」は {ctx.get('ge')} 以上にしてください"
+        case "string_type":
+            return f"「{field}」は文字列にしてください"
+        case "list_type":
+            return f"「{field}」は配列にしてください"
+        case "value_error":
+            # 自前のチェック（models.py の _reject_null など）の文をそのまま使う
+            return str(e["msg"]).removeprefix("Value error, ")
+        case "json_invalid":
+            return "送られてきた内容を JSON として読めません"
+        case _:
+            return f"「{field}」の値が正しくありません"
 
 
 def like_pattern(s: str) -> str:
@@ -74,10 +112,10 @@ def create_paper(body: PaperCreate, session: Session = Depends(get_session)):
 
     try:
         data = fetch_paper(arxiv_id)
-    except ValueError as e:
+    except PaperNotFound as e:
         raise HTTPException(404, str(e))
-    except httpx.HTTPError:
-        raise HTTPException(502, "arXiv API に接続できませんでした")
+    except ArxivUnavailable as e:
+        raise HTTPException(502, str(e))
 
     paper = Paper(**data)
     session.add(paper)
@@ -121,7 +159,10 @@ def list_papers(
             )
         )
     sort_col = col(getattr(Paper, sort))
-    stmt = stmt.order_by(sort_col.desc() if order == "desc" else sort_col.asc())
+    # 同じ日付の論文の並びが毎回変わらないよう、id でも並べる
+    stmt = stmt.order_by(
+        sort_col.desc() if order == "desc" else sort_col.asc(), col(Paper.id).desc()
+    )
     return session.exec(stmt).all()
 
 

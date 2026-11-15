@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from typing import Literal
 
-from pydantic import computed_field, field_validator
+from pydantic import computed_field, field_validator, model_validator
 from sqlalchemy import CheckConstraint, Column, Index, String
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlmodel import Field, SQLModel
@@ -59,6 +59,16 @@ class PaperUpdate(SQLModel):
     tags: list[str] | None = None
     note: str | None = None
     status: Status | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_null(cls, data):
+        # {"note": null} を「変更なし」と黙って扱わず、422 にする（消したいときは "" や []）
+        if isinstance(data, dict):
+            nulls = [k for k, v in data.items() if v is None]
+            if nulls:
+                raise ValueError(f"null は使えません: {', '.join(nulls)}")
+        return data
 
     @field_validator("tags")
     @classmethod
