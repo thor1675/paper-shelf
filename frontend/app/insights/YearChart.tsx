@@ -17,11 +17,11 @@ function niceStep(max: number) {
 
 export default function YearChart({ data }: { data: YearCount[] }) {
   const [active, setActive] = useState<number | null>(null);
-  if (data.length === 0) return <p className="text-sm text-zinc-500">まだ論文がありません。</p>;
+  if (data.length === 0) return <p className="text-sm text-zinc-500">まだ論文がありません</p>;
 
   // 論文の無い年も 0 件として並べる（年が飛ぶと間隔が嘘になる）
-  const first = data[0].year;
-  const last = data[data.length - 1].year;
+  const first = Math.min(...data.map((d) => d.year));
+  const last = Math.max(...data.map((d) => d.year));
   const years: YearCount[] = [];
   for (let y = first; y <= last; y++) {
     years.push({ year: y, count: data.find((d) => d.year === y)?.count ?? 0 });
@@ -42,7 +42,7 @@ export default function YearChart({ data }: { data: YearCount[] }) {
 
   return (
     <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="公開年ごとの論文数">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="group" aria-label="公開年ごとの論文数">
         {ticks.map((t) => (
           <g key={t}>
             <line
@@ -86,7 +86,7 @@ export default function YearChart({ data }: { data: YearCount[] }) {
               onPointerLeave={() => setActive(null)}
               onFocus={() => setActive(d.year)}
               onBlur={() => setActive(null)}
-              className="outline-none"
+              className="viz-focus outline-none"
               aria-label={`${d.year}年 ${d.count}本`}
             >
               {/* 当たり判定は棒より広く、帯全体にする */}
@@ -94,11 +94,13 @@ export default function YearChart({ data }: { data: YearCount[] }) {
               {path && (
                 <path
                   d={path}
+                  className="viz-mark"
                   fill="var(--viz-mark)"
                   opacity={active === null || active === d.year ? 1 : 0.45}
                 />
               )}
-              {d.year === peak.year && (
+              {/* 一番多い年だけ数を出す。触れている間はツールチップと重なるので隠す */}
+              {d.year === peak.year && active === null && (
                 <text x={cx} y={y(d.count) - 6} textAnchor="middle" fontSize={11} fill="var(--viz-ink-2)">
                   {d.count}
                 </text>
@@ -115,7 +117,8 @@ export default function YearChart({ data }: { data: YearCount[] }) {
         <div
           className="pointer-events-none absolute -translate-x-1/2 rounded border border-zinc-200 bg-white px-2 py-1 text-xs shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
           style={{
-            left: `${((PAD.left + band * years.indexOf(activeYear) + band / 2) / W) * 100}%`,
+            // 端の棒でツールチップが外にはみ出さないよう、10%〜90% に収める
+            left: `${Math.min(90, Math.max(10, ((PAD.left + band * years.indexOf(activeYear) + band / 2) / W) * 100))}%`,
             top: 0,
           }}
         >

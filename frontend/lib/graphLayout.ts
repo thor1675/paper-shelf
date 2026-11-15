@@ -56,7 +56,10 @@ export function layout(graph: Graph): PlacedGraph {
     r: Math.min(22, 5 + Math.sqrt(n.count) * 4),
     labelW: textWidth(n.id),
   }));
-  const links: Link[] = graph.edges.map((e) => ({ ...e }));
+  // ノードに無い名前を指す線があると d3-force が例外を投げるので、先に捨てる
+  const known = new Set(nodes.map((n) => n.id));
+  const edges = graph.edges.filter((e) => known.has(e.source) && known.has(e.target));
+  const links: Link[] = edges.map((e) => ({ ...e }));
 
   // まとまりごとに配置を計算し、外接する箱を求める
   const boxes = components(nodes, links).map((group) => {
@@ -109,7 +112,7 @@ export function layout(graph: Graph): PlacedGraph {
 
   return {
     nodes: nodes.map((n) => ({ id: n.id, count: n.count, r: n.r, x: round(n.x), y: round(n.y) })),
-    links: graph.edges,
+    links: edges,
     width: round(width),
     height: round(height),
   };

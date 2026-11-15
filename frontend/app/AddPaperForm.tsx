@@ -43,6 +43,7 @@ export default function AddPaperForm() {
           value={arxivId}
           onChange={(e) => setArxivId(e.target.value)}
           placeholder="arXiv ID または URL（例: 1706.03762）"
+          aria-label="登録する論文の arXiv ID または URL"
           className="flex-1 rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
         />
         <button

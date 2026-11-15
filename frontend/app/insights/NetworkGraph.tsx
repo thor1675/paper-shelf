@@ -34,7 +34,7 @@ export default function NetworkGraph({
     return m;
   }, [links]);
 
-  if (nodes.length === 0) return <p className="text-sm text-zinc-500">表示できるものがありません。</p>;
+  if (nodes.length === 0) return <p className="text-sm text-zinc-500">表示できるものがありません</p>;
 
   const labeled = new Set(
     [...nodes].sort((a, b) => b.count - a.count).slice(0, MAX_LABELS).map((n) => n.id),
@@ -45,7 +45,7 @@ export default function NetworkGraph({
 
   return (
     <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="つながりの図">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="group" aria-label="つながりの図">
         {links.map((l) => {
           const lit = active === null || l.source.id === active || l.target.id === active;
           return (
@@ -68,7 +68,7 @@ export default function NetworkGraph({
             role="link"
             tabIndex={0}
             aria-label={`${n.id}（${n.count}${unit}）で絞り込む`}
-            className="cursor-pointer outline-none"
+            className="viz-focus cursor-pointer outline-none"
             opacity={isLit(n.id) ? 1 : 0.25}
             onPointerEnter={() => setActive(n.id)}
             onPointerLeave={() => setActive(null)}
@@ -80,6 +80,7 @@ export default function NetworkGraph({
             {/* 当たり判定は円より大きくする */}
             <circle cx={n.x} cy={n.y} r={Math.max(n.r, 12)} fill="transparent" />
             <circle
+              className="viz-mark"
               cx={n.x}
               cy={n.y}
               r={n.r}
@@ -110,8 +111,9 @@ export default function NetworkGraph({
         <div
           className="pointer-events-none absolute rounded border border-zinc-200 bg-white px-2 py-1 text-xs shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
           style={{
-            left: `${Math.min((activeNode.x / W) * 100, 70)}%`,
-            top: `${((activeNode.y + activeNode.r + FONT + 10) / H) * 100}%`,
+            // ツールチップが図の外にはみ出さないよう、横は 0%〜60%、縦は 85% までに収める
+            left: `${Math.min(Math.max((activeNode.x / W) * 100 - 10, 0), 60)}%`,
+            top: `${Math.min(((activeNode.y + activeNode.r + FONT + 10) / H) * 100, 85)}%`,
           }}
         >
           <span className="font-semibold">
@@ -119,7 +121,7 @@ export default function NetworkGraph({
           </span>
           <span className="ml-1 text-zinc-500">{activeNode.id}</span>
           <div className="text-zinc-500">
-            つながり {neighbors.get(activeNode.id)?.size ?? 0} 件 · 押すと一覧で絞り込み
+            つながり {neighbors.get(activeNode.id)?.size ?? 0} 本 · 押すと一覧で絞り込み
           </div>
         </div>
       )}

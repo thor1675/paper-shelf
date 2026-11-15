@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  /* ダークモードでプルダウンや候補一覧などのブラウザ標準の部品も暗くする */
+  color-scheme: light dark;
   --background: #ffffff;
   --foreground: #171717;
 }
@@ -26,6 +28,7 @@ body {
 }
 
 /* メモの Markdown 表示。Tailwind が見出しやリストの既定スタイルを消しているので戻す */
+.markdown { overflow-wrap: anywhere; } /* 長い URL がはみ出さないように */
 .markdown > * + * { margin-top: 0.75em; }
 /* 「メモ」の見出し（text-lg）より大きくならないようにする */
 .markdown h1 { font-size: 1.1em; font-weight: 700; }
@@ -70,3 +73,6 @@ body {
     --viz-edge: #4a4a46;
   }
 }
+
+/* 図の中で、キーボードで選んでいる棒や円に輪郭を付ける */
+.viz-focus:focus-visible .viz-mark { stroke: var(--viz-ink); stroke-width: 2.5; }

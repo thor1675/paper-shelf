@@ -20,13 +20,16 @@ type Draft = { status: Status; tags: string[]; note: string };
 const UNSAVED_MESSAGE = "変更が保存されていません。破棄して移動しますか？";
 
 export default function PaperDetail({
-  paper,
+  paper: initialPaper,
   allTags,
 }: {
   paper: Paper;
   allTags: string[];
 }) {
   const router = useRouter();
+  // 表示している論文。サーバから受け取るのは最初の 1 回だけで、以降は PATCH の応答で更新する。
+  // router.refresh() の結果を待って古いメモを元に次の保存をすると、直前の変更が消えるため
+  const [paper, setPaper] = useState(initialPaper);
   // draft が null なら表示モード、値があれば編集モード
   const [draft, setDraft] = useState<Draft | null>(null);
   const [tagInput, setTagInput] = useState("");
@@ -68,52 +71,47 @@ export default function PaperDetail({
     setTagInput("");
   }
 
-  async function save() {
-    if (!draft) return;
-    // 入力欄に残っているタグも保存に含める
-    const tags = addTag(draft.tags, tagInput);
+  // PATCH して、成功したら応答（保存後の論文）を表示に反映する。失敗したら false
+  async function patch(body: Partial<Draft>): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
       const res = await fetch(`${BROWSER_API_URL}/papers/${paper.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...draft, tags }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         setError(await errorMessage(res));
-        return;
+        return false;
       }
-      setDraft(null);
-      setTagInput("");
-      router.refresh();
+      setPaper(await res.json());
+      return true;
     } catch {
       setError("backend に接続できませんでした");
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  // 表示モードでチェックボックスを押したとき。メモだけをその場で保存する
-  async function saveNote(note: string) {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`${BROWSER_API_URL}/papers/${paper.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note }),
-      });
-      if (!res.ok) {
-        setError(await errorMessage(res));
-        return;
-      }
+  async function save() {
+    if (!draft || busy) return;
+    // 入力欄に残っているタグも保存に含める
+    if (await patch({ ...draft, tags: addTag(draft.tags, tagInput) })) {
+      setDraft(null);
+      setTagInput("");
+      // 一覧やタグの候補にも反映させるため。表示中の論文は上で更新済み
       router.refresh();
-    } catch {
-      setError("backend に接続できませんでした");
-    } finally {
-      setBusy(false);
     }
+  }
+
+  // 表示モードでチェックボックスを押したとき。先に画面を切り替えてから保存し、失敗したら戻す
+  async function saveNote(note: string) {
+    if (busy) return;
+    const before = paper;
+    setPaper({ ...paper, note });
+    if (!(await patch({ note }))) setPaper(before);
   }
 
   async function remove() {
@@ -159,16 +157,16 @@ export default function PaperDetail({
 
       <header className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold">{paper.title}</h1>
+          <h1 className="min-w-0 text-2xl font-bold break-words">{paper.title}</h1>
           {!draft && (
             <span className="shrink-0 rounded bg-zinc-100 px-2 py-0.5 text-sm dark:bg-zinc-800">
               {STATUS_LABELS[paper.status]}
             </span>
           )}
         </div>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm break-words text-zinc-600 dark:text-zinc-400">
           {paper.authors.map((a, i) => (
-            <span key={a}>
+            <span key={`${i}-${a}`}>
               {i > 0 && ", "}
               <Link
                 href={`/?author=${encodeURIComponent(a)}`}
@@ -237,10 +235,25 @@ export default function PaperDetail({
                   value={tagInput}
                   list="tag-suggestions"
                   placeholder="タグを追加（Enter）"
-                  onChange={(e) => setTagInput(e.target.value)}
+                  aria-label="タグを追加"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // 候補から選んだときはその場で追加する。Chrome は候補を Enter で選ぶと、
+                    // 値が入る前に keydown が来るので、Enter 側では途中までの文字しか取れない
+                    const picked =
+                      !(e.nativeEvent instanceof InputEvent) ||
+                      e.nativeEvent.inputType === "insertReplacementText";
+                    if (picked && suggestions.includes(value)) {
+                      setDraft({ ...draft, tags: addTag(draft.tags, value) });
+                      setTagInput("");
+                    } else {
+                      setTagInput(value);
+                    }
+                  }}
                   onKeyDown={(e) => {
-                    // 日本語入力の変換確定の Enter ではタグを追加しない
-                    if (e.nativeEvent.isComposing) return;
+                    // 日本語入力の変換確定の Enter ではタグを追加しない。
+                    // Safari は確定の Enter で isComposing が false になるので keyCode 229 も見る
+                    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
                     if (e.key === "Enter" || e.key === ",") {
                       e.preventDefault();
                       commitTagInput();
@@ -340,8 +353,8 @@ export default function PaperDetail({
           <section className="flex flex-col gap-2">
             <h2 className="text-lg font-bold">メモ</h2>
             {paper.note.trim() ? (
-              // 保存中は押せないようにする（古いメモを元に書き換えてしまうのを防ぐ）
-              <Markdown onChange={busy ? undefined : saveNote}>{paper.note}</Markdown>
+              // 保存中に押された分は saveNote が無視する（disabled にするとキーボードのフォーカスが外れる）
+              <Markdown onChange={saveNote}>{paper.note}</Markdown>
             ) : (
               <p className="text-sm text-zinc-500">（メモはまだありません）</p>
             )}
@@ -353,7 +366,9 @@ export default function PaperDetail({
             <button
               type="button"
               onClick={startEdit}
-              className="rounded bg-zinc-900 px-4 py-1.5 text-white dark:bg-zinc-100 dark:text-zinc-900"
+              // 保存中に押すと、保存前のメモが下書きになってしまう
+              disabled={busy}
+              className="rounded bg-zinc-900 px-4 py-1.5 text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
             >
               編集
             </button>

@@ -20,7 +20,7 @@ async function getJson<T>(path: string): Promise<T | null> {
 
 function formatAuthors(authors: string[]) {
   if (authors.length <= 3) return authors.join(", ");
-  return `${authors.slice(0, 3).join(", ")} 他${authors.length - 3}名`;
+  return `${authors.slice(0, 3).join(", ")} 他${authors.length - 3}人`;
 }
 
 export default async function Home({
@@ -53,12 +53,12 @@ export default async function Home({
       )}
 
       {papers === null ? (
-        <p className="text-red-600">一覧を取得できませんでした。backend が起動しているか確認してください。</p>
+        <p className="text-red-600">一覧を取得できませんでした。backend が起動しているか確認してください</p>
       ) : papers.length === 0 ? (
         <p className="text-zinc-500">
           {hasFilters(filters)
-            ? "条件に合う論文がありません。"
-            : "まだ論文がありません。上のフォームから登録してください。"}
+            ? "条件に合う論文がありません"
+            : "まだ論文がありません。上のフォームから登録してください"}
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -68,10 +68,10 @@ export default async function Home({
               className="rounded border border-zinc-200 p-4 dark:border-zinc-800"
             >
               <div className="flex items-start justify-between gap-3">
-                <Link href={`/papers/${p.id}`} className="font-semibold hover:underline">
+                <Link href={`/papers/${p.id}`} className="min-w-0 font-semibold break-words hover:underline">
                   {p.title}
                 </Link>
-                <StatusSelect paperId={p.id} status={p.status} />
+                <StatusSelect paperId={p.id} title={p.title} status={p.status} />
               </div>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                 {formatAuthors(p.authors)} · {p.published} · arXiv:{p.arxiv_id}

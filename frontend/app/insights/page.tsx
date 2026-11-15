@@ -1,3 +1,4 @@
+import Form from "next/form";
 import Link from "next/link";
 import { connection } from "next/server";
 
@@ -71,19 +72,36 @@ function GraphTable({ graph, unit }: { graph: Graph; unit: string }) {
   );
 }
 
-export default async function InsightsPage() {
+// 共著者グラフの条件。選択肢に無い値（URL の書き換えなど）は既定値に戻す
+// 1 本だと論文ごとの著者が別々の塊になるだけで、つながりが読めないので選ばせない
+const MIN_PAPERS = [2, 3] as const;
+const MAX_AUTHORS = [5, 10, 20, 50] as const;
+
+function pick<T extends number>(raw: string | string[] | undefined, choices: readonly T[], fallback: T): T {
+  const n = Number(Array.isArray(raw) ? raw[0] : raw);
+  return choices.includes(n as T) ? (n as T) : fallback;
+}
+
+export default async function InsightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   await connection();
+  const sp = await searchParams;
+  const minPapers = pick(sp.min_papers, MIN_PAPERS, 2);
+  const maxAuthors = pick(sp.max_authors, MAX_AUTHORS, 20);
   const [papers, years, tagGraph, authorGraph] = await Promise.all([
     getJson<Paper[]>("/papers"),
     getJson<{ year: number; count: number }[]>("/stats/years"),
     getJson<Graph>("/graph/tags"),
-    getJson<Graph>("/graph/authors"),
+    getJson<Graph>(`/graph/authors?min_papers=${minPapers}&max_authors=${maxAuthors}`),
   ]);
 
   if (!papers || !years || !tagGraph || !authorGraph) {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-10">
-        <p className="text-red-600">データを取得できませんでした。backend が起動しているか確認してください。</p>
+        <p className="text-red-600">データを取得できませんでした。backend が起動しているか確認してください</p>
       </main>
     );
   }
@@ -111,7 +129,7 @@ export default async function InsightsPage() {
 
       <Section
         title="公開年ごとの本数"
-        note="arXiv に初版が出た年。棒に触れると本数が出ます。"
+        note="arXiv に初版が出た年。棒に触れると本数が出ます"
         table={
           <table className="text-left">
             <tbody>
@@ -132,8 +150,8 @@ export default async function InsightsPage() {
         title="タグのつながり"
         note={
           tagGraph.edges.length === 0
-            ? "円の大きさが本数。1 本の論文に複数のタグを付けると、一緒に付いたタグ同士が線で結ばれます。"
-            : "円の大きさが本数、線の太さが同じ論文に一緒に付いた回数。押すとそのタグで絞り込みます。"
+            ? "円の大きさが本数。1 本の論文に複数のタグを付けると、一緒に付いたタグ同士が線で結ばれます"
+            : "円の大きさが本数、線の太さが同じ論文に一緒に付いた回数。押すとそのタグで絞り込みます"
         }
         table={<GraphTable graph={tagGraph} unit="本" />}
       >
@@ -142,9 +160,47 @@ export default async function InsightsPage() {
 
       <Section
         title="共著者のつながり"
-        note="2 本以上に出てくる著者だけを表示（著者が 20 人を超える論文は除く）。線の太さが共著の本数。押すとその著者で絞り込みます。"
+        note={`${minPapers} 本以上に出てくる著者だけを表示（著者が ${maxAuthors} 名を超える論文は除く）。線の太さが共著の本数。押すとその著者で絞り込みます`}
         table={<GraphTable graph={authorGraph} unit="本" />}
       >
+        {/* 条件を変えて「表示」を押すと URL が変わり、サーバで取り直して配置し直す */}
+        <Form action="/insights" className="flex flex-wrap items-center gap-2 text-sm">
+          <label className="flex items-center gap-1">
+            <select
+              name="min_papers"
+              defaultValue={minPapers}
+              className="rounded border border-zinc-300 bg-transparent px-1 py-0.5 dark:border-zinc-700"
+            >
+              {MIN_PAPERS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            本以上に出てくる著者
+          </label>
+          <label className="flex items-center gap-1">
+            著者が
+            <select
+              name="max_authors"
+              defaultValue={maxAuthors}
+              className="rounded border border-zinc-300 bg-transparent px-1 py-0.5 dark:border-zinc-700"
+            >
+              {MAX_AUTHORS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            人を超える論文は除く
+          </label>
+          <button
+            type="submit"
+            className="rounded border border-zinc-300 px-2 py-0.5 dark:border-zinc-700"
+          >
+            表示
+          </button>
+        </Form>
         <NetworkGraph graph={layout(authorGraph)} param="author" />
       </Section>
     </main>

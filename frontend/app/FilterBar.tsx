@@ -41,7 +41,10 @@ export default function FilterBar({
       {/* 検索してもタグ・ステータス・並び順は保つため、hidden で一緒に送る */}
       <Form action="/" className="flex gap-2">
         <input
+          // key: 条件をクリアしたり別の条件のリンクで移動したとき、前の検索語を残さない
+          key={filters.q ?? ""}
           name="q"
+          aria-label="タイトル・abstract を検索"
           defaultValue={filters.q}
           placeholder="タイトル・abstract を検索"
           className="flex-1 rounded border border-zinc-300 bg-transparent px-3 py-1.5 text-sm dark:border-zinc-700"
