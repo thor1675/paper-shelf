@@ -1,18 +1,21 @@
 import html
 import os
 import re
-import time
 
 import httpx
 
 API_URL = os.environ.get("API_URL", "http://backend:8000")
-# arXiv API の利用規約で、リクエストは 3 秒に 1 回まで
-ARXIV_INTERVAL = 3
+# arXiv の「3 秒に 1 回」は backend がまとめて守るので、ここでは待たない
+# 登録は backend 側で arXiv の空きを待つことがあるので、長めに待つ
+POST_TIMEOUT = 60
 
-_ID = r"(\d{4}\.\d{4,5}|[a-z\-]+(?:\.[A-Z]{2})?/\d{7})(?:v\d+)?"
-# arxiv.org/abs/… と arxiv.org/pdf/… の URL、それに "arXiv:2401.12345" の形を拾う。
+# 後ろに数字が続くもの（2401.123456 の先頭 5 桁など）は ID として拾わない
+_ID = r"(\d{4}\.\d{4,5}|[a-z\-]+(?:\.[A-Z]{2})?/\d{7})(?:v\d+)?(?!\d)"
+# arxiv.org/abs|pdf|html/… の URL（fooarxiv.org は除く）と、"arXiv:2401.12345" の形を拾う。
 # 数字だけ（2401.12345）は日付や番号と区別できないので拾わない
-ARXIV_PATTERN = re.compile(rf"(?i:arxiv\.org)/(?:abs|pdf)/{_ID}|(?i:arxiv):\s*{_ID}")
+ARXIV_PATTERN = re.compile(
+    rf"(?<![\w-])(?i:arxiv\.org)/(?:abs|pdf|html)/{_ID}|\b(?i:arxiv):\s*{_ID}"
+)
 
 REACTIONS = {201: "white_check_mark", 409: "eyes"}
 REACTION_FAILED = "warning"
@@ -39,15 +42,20 @@ def slack_to_markdown(text: str, user_name=lambda uid: uid) -> str:
         if target.startswith("#"):
             return f"#{label or target[1:]}"
         if target.startswith("!"):
-            return f"@{label or target[1:]}"
-        return f"[{label}]({target})" if label else target
+            # <!here> → @here。<!subteam^S1|@team> や <!date^…|2月18日> はラベルをそのまま使う
+            return label or f"@{target[1:]}"
+        if label:
+            # ラベルに [ ] があると Markdown のリンクが壊れるのでエスケープする
+            label = label.replace("[", "\\[").replace("]", "\\]")
+            return f"[{label}]({target})"
+        return target
 
     return html.unescape(re.sub(r"<([^<>]+)>", replace, text))
 
 
 def build_note(text: str, author: str, channel: str, permalink: str | None) -> str:
     quote = "\n".join(f"> {line}" if line else ">" for line in text.splitlines())
-    source = f"— @{author} in #{channel}"
+    source = f"— #{channel} で @{author} が投稿"
     if permalink:
         source += f"（[Slack で開く]({permalink})）"
     return f"{quote}\n\n{source}"
@@ -68,17 +76,21 @@ def register(app) -> None:
         channel_id, ts = event["channel"], event["ts"]
         note: str | None = None
         reactions: list[str] = []
-        for i, arxiv_id in enumerate(ids):
-            if i > 0:
-                time.sleep(ARXIV_INTERVAL)
+        for arxiv_id in ids:
             try:
-                res = httpx.post(f"{API_URL}/papers", json={"arxiv_id": arxiv_id}, timeout=30)
+                res = httpx.post(
+                    f"{API_URL}/papers", json={"arxiv_id": arxiv_id}, timeout=POST_TIMEOUT
+                )
                 if res.status_code == 201:
-                    # 投稿文をメモに残す（新しく登録したときだけ）
+                    # 投稿文をメモに残す（新しく登録したときだけ）。
+                    # 失敗しても論文の保存はできているので、✅ のままにしてログだけ残す
                     note = note or _note_for(event, client, logger)
-                    httpx.patch(
-                        f"{API_URL}/papers/{res.json()['id']}", json={"note": note}, timeout=10
-                    ).raise_for_status()
+                    try:
+                        httpx.patch(
+                            f"{API_URL}/papers/{res.json()['id']}", json={"note": note}, timeout=10
+                        ).raise_for_status()
+                    except httpx.HTTPError as e:
+                        logger.warning("メモを書き込めませんでした %s: %s", arxiv_id, e)
                 elif res.status_code != 409:
                     logger.warning("登録に失敗 %s: %s %s", arxiv_id, res.status_code, res.text)
                 reaction = REACTIONS.get(res.status_code, REACTION_FAILED)
