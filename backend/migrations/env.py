@@ -8,7 +8,8 @@ from sqlmodel import SQLModel
 from models import Paper
 
 config = context.config
-config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+# alembic の設定は % を特別扱いするので、パスワードに % があると壊れる。%% にして渡す
+config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"].replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
