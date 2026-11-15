@@ -8,3 +8,6 @@ psycopg[binary]==3.3.8
 alembic==1.20.1
 httpx==0.28.1
 feedparser==6.0.14
+
+# テスト用（docker compose exec backend pytest）
+pytest==9.2.0
