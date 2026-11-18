@@ -41,10 +41,47 @@ def client(monkeypatch):
     import main
 
     with psycopg.connect(TEST_URL, autocommit=True) as conn:
-        conn.execute("TRUNCATE papers RESTART IDENTITY")
+        conn.execute(
+            "TRUNCATE papers, shelf, watches, scholar_cache, translations, users, user_sessions, invites, "
+            "slack_link_codes RESTART IDENTITY CASCADE"
+        )
 
     monkeypatch.setattr(main, "fetch_paper", fake_fetch_paper)
-    return TestClient(main.app)
+    monkeypatch.setattr(main, "fetch_papers", fake_fetch_papers)
+    monkeypatch.setattr(main, "search_arxiv", fake_search_arxiv)
+    # 登録直後の OpenAlex との同期は、テストでは呼ばれたことだけ記録する
+    SYNCED.clear()
+    monkeypatch.setattr(main, "sync_new_papers", SYNCED.extend)
+    # 翻訳は裏の処理をテストの DB で動かす（本番の DB に繋がないように）
+    import db as db_module
+    from sqlmodel import Session as _Session
+
+    def run_translation(arxiv_id):
+        with _Session(db_module.engine) as s:
+            main.translation.run(s, arxiv_id)
+
+    monkeypatch.setattr(main, "run_translation", run_translation)
+    # 最初の 1 人（alice）として登録し、ログインした状態で返す（Cookie は TestClient が持つ）
+    c = TestClient(main.app)
+    assert c.post("/auth/register", json={"username": "alice", "password": "password-a"}).status_code == 201
+    return c
+
+
+@pytest.fixture
+def other_client(client):
+    """2 人目（bob）。alice の招待コードで登録し、ログインした状態で返す"""
+    from fastapi.testclient import TestClient
+
+    import main
+
+    code = client.post("/auth/invites").json()["code"]
+    c = TestClient(main.app)
+    res = c.post("/auth/register", json={"username": "bob", "password": "password-b", "invite_code": code})
+    assert res.status_code == 201, res.text
+    return c
+
+
+SYNCED: list[int] = []
 
 
 # 偽の arXiv。ID ごとに返すメタデータを決めておく
@@ -83,7 +120,48 @@ def fake_fetch_paper(arxiv_id: str) -> dict:
 
     if arxiv_id == "2401.00502":  # arXiv が落ちている場合の代わり
         raise ArxivUnavailable(UNAVAILABLE_MESSAGE)
+    if arxiv_id == "2401.00429":  # arXiv に 429 で断られた場合の代わり
+        from arxiv import BUSY_MESSAGE, ArxivBusy
+
+        raise ArxivBusy(BUSY_MESSAGE)
     if arxiv_id not in FAKE_PAPERS:
         raise PaperNotFound(f"arXiv ID: {arxiv_id}はarXivにありませんでした")
     p = FAKE_PAPERS[arxiv_id]
     return {**p, "arxiv_id": arxiv_id, "published": date.fromisoformat(p["published"])}
+
+
+def fake_fetch_papers(arxiv_ids: list[str]) -> dict[str, dict]:
+    from arxiv import ArxivUnavailable, PaperNotFound
+
+    if "2401.00502" in arxiv_ids:
+        from arxiv import UNAVAILABLE_MESSAGE
+
+        raise ArxivUnavailable(UNAVAILABLE_MESSAGE)
+    if "2401.00429" in arxiv_ids:
+        from arxiv import BUSY_MESSAGE, ArxivBusy
+
+        raise ArxivBusy(BUSY_MESSAGE)
+    result = {}
+    for i in arxiv_ids:
+        try:
+            result[i] = fake_fetch_paper(i)
+        except PaperNotFound:
+            pass  # 本物の arXiv と同じく、無い ID は黙って外す
+    return result
+
+
+# 偽の arXiv 検索。テストごとに SEARCH_RESULTS を書き換えて使う
+SEARCH_RESULTS: list[str] = []
+
+
+def fake_search_arxiv(q, start=0, max_results=20, newest=False):
+    from arxiv import ArxivUnavailable, UNAVAILABLE_MESSAGE
+
+    if q == "down":
+        raise ArxivUnavailable(UNAVAILABLE_MESSAGE)
+    if q == "busy":
+        from arxiv import SEARCH_BUSY_MESSAGE, ArxivBusy
+
+        raise ArxivBusy(SEARCH_BUSY_MESSAGE)
+    papers = [fake_fetch_paper(i) for i in SEARCH_RESULTS]
+    return len(papers), papers[start : start + max_results]
