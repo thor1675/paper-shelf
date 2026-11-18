@@ -19,7 +19,7 @@ export default function Nav({ username }: { username: string | null }) {
   const pathname = usePathname();
   return (
     <nav className="border-b border-zinc-200 dark:border-zinc-800">
-      <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+      <div className="flex mx-auto w-full max-w-(--page-max) flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
         <Link
           href="/"
           className="mr-2 font-bold"

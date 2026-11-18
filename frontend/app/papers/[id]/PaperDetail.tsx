@@ -127,7 +127,7 @@ export default function PaperDetail({
   }
 
   async function remove() {
-    if (!(await ask({ title: "論文を本棚から削除しますか？", description: paper.title, action: "削除", destructive: true }))) return;
+    if (!(await ask({ title: `「${paper.title}」を本棚から削除しますか？`, action: "削除", destructive: true }))) return;
     setBusy(true);
     try {
       const res = await apiFetch(`${BROWSER_API_URL}/papers/${paper.id}`, {
@@ -156,7 +156,7 @@ export default function PaperDetail({
   );
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
+    <main className="flex mx-auto w-full max-w-(--page-max) flex-col gap-6 px-4 py-10">
       {dialog}
       <Link
         href="/"

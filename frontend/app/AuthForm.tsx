@@ -79,7 +79,7 @@ export default function AuthForm({
         </p>
       )}
       <Button type="submit" disabled={busy}>
-        {busy ? "送信中…" : mode === "login" ? "ログイン" : "登録"}
+        {busy ? (mode === "login" ? "ログイン中…" : "登録中…") : mode === "login" ? "ログイン" : "登録"}
       </Button>
     </form>
   );

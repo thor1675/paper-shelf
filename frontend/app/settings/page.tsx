@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { unstable_rethrow } from "next/navigation";
 
 import { GITHUB_ERRORS, type Me } from "@/lib/api";
+import { DISPLAY_COOKIE, parseDisplay } from "@/lib/display";
 import { serverFetch } from "@/lib/server";
 
+import DisplaySettings from "./DisplaySettings";
 import { GitHubLinkBox, InviteBox, LogoutButton, SlackLinkBox } from "./SettingsControls";
 
 type Code = { code: string; expires_at: string };
@@ -25,9 +28,9 @@ export default async function SettingsPage({
   } catch (e) {
     unstable_rethrow(e);
   }
-  if (!me) return <main className="mx-auto w-full max-w-3xl px-4 py-10 text-red-600">backend に接続できませんでした</main>;
+  if (!me) return <main className="mx-auto w-full max-w-(--page-max) px-4 py-10 text-red-600">backend に接続できませんでした</main>;
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-10">
+    <main className="flex mx-auto w-full max-w-(--page-max) flex-col gap-8 px-4 py-10">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">設定</h1>
         <LogoutButton />
@@ -36,16 +39,21 @@ export default async function SettingsPage({
         <h2 className="text-lg font-bold">アカウント</h2>
         <div className="flex items-center gap-3 text-sm">
           <span>ユーザー名: {me.username}</span>
-          <Link href="/settings/account" className="rounded border border-zinc-300 px-3 py-1 dark:border-zinc-700">
-            ユーザー名・パスワードを変更 →
+          <Link href="/settings/security" className="rounded border border-zinc-300 px-3 py-1 dark:border-zinc-700">
+            セキュリティ設定 →
           </Link>
         </div>
       </section>
 
       <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-bold">表示</h2>
+        <DisplaySettings initial={parseDisplay((await cookies()).get(DISPLAY_COOKIE)?.value)} />
+      </section>
+
+      <section className="flex flex-col gap-2">
         <h2 className="text-lg font-bold">GitHub との紐づけ</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          紐づけると、ログイン画面の「GitHub でログイン」で入れます（OAuth2）。PAPER - Shelf は GitHub の公開されている名前と ID だけを受け取り、パスワードやリポジトリには触れません
+          紐づけると、ログイン画面の「GitHub でログイン」で入れます。PAPER - Shelf は GitHub の公開されている名前と ID だけを受け取り、パスワードやリポジトリには触れません
         </p>
         {github === "linked" && <p className="text-sm text-green-700 dark:text-green-400">GitHub と紐づけました</p>}
         {github_error && <p role="alert" className="text-sm text-destructive">{GITHUB_ERRORS[github_error] ?? GITHUB_ERRORS.github}</p>}
@@ -55,7 +63,7 @@ export default async function SettingsPage({
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-bold">Slack との紐づけ</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          紐づけると、Slack に貼った arXiv のリンクと、新着通知の「保存」があなたの本棚に入ります。新着通知ではあなたがメンションされます。紐づけていない人の投稿は保存されません
+          紐づけると、Slack に貼った arXiv のリンクと、新着通知で「保存」を押した論文があなたの本棚に保存されます
         </p>
         <SlackLinkBox linked={me.slack_linked} />
       </section>

@@ -24,7 +24,7 @@ export default async function RegisterPage() {
           <CardDescription>
             {needsSetup
               ? "最初の利用者です。登録すると、これまでに登録された論文と新着のキーワードを引き継ぎます"
-              : "登録には招待コードが必要です。登録済みの人に、設定画面で招待コードを発行してもらってください"}
+              : "登録には招待コードが必要です。登録済みの人に、設定画面から招待コードを発行してもらってください"}
           </CardDescription>
         </CardHeader>
         <CardContent>

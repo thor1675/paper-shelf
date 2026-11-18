@@ -18,7 +18,7 @@ export default async function ReadPage({ params }: { params: Promise<{ id: strin
     .catch(() => null);
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-10">
+    <main className="flex mx-auto w-full max-w-(--page-max-lg) flex-col gap-4 px-4 py-10">
       <Link href={`/papers/${paper.id}`} className="text-sm text-zinc-500 hover:underline">
         ← 詳細へ
       </Link>

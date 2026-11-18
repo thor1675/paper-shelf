@@ -18,7 +18,7 @@ export default async function TagsPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
+    <main className="flex mx-auto w-full max-w-(--page-max) flex-col gap-6 px-4 py-10">
       <h1 className="text-2xl font-bold">タグ</h1>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         名前を変えられます。既にあるタグの名前にすると、2 つのタグが 1 つにまとまります（「指示追従」と「意図追従」など）。

@@ -2,12 +2,29 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* ダークモードは今までどおり OS の設定に従う（shadcn/ui の既定は .dark クラスを付ける方式） */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/*
+ * 表示の設定（設定 → 表示）。<html> の data-theme / data-width / data-font で切り替える（lib/display.ts）
+ * dark: は、テーマが「ダーク」のとき、または「OS に合わせる」で OS がダークのときに効く
+ */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-theme="system"], [data-theme="system"] *) {
+      @slot;
+    }
+  }
+}
+/* 幅を「余白を減らす」にしたときだけ効く（広い画面で図を 2 列に並べるなど） */
+@custom-variant wide (&:where([data-width="wide"], [data-width="wide"] *));
 
 :root {
   /* ダークモードでプルダウンや候補一覧などのブラウザ標準の部品も暗くする */
   color-scheme: light dark;
+  /* 中身の幅の上限。幅が「標準」なら中央に寄せる。「余白を減らす」なら画面いっぱい */
+  --page-max: 48rem;
+  --page-max-lg: 64rem;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -104,9 +121,11 @@
 .markdown th, .markdown td { border: 1px solid #d4d4d8; padding: 0.25em 0.5em; }
 .markdown .katex-display { overflow-x: auto; overflow-y: hidden; }
 @media (prefers-color-scheme: dark) {
-  .markdown code, .markdown pre { background: rgb(255 255 255 / 0.08); }
-  .markdown th, .markdown td { border-color: #3f3f46; }
+  html[data-theme="system"] .markdown code, html[data-theme="system"] .markdown pre { background: rgb(255 255 255 / 0.08); }
+  html[data-theme="system"] .markdown th, html[data-theme="system"] .markdown td { border-color: #3f3f46; }
 }
+html[data-theme="dark"] .markdown code, html[data-theme="dark"] .markdown pre { background: rgb(255 255 255 / 0.08); }
+html[data-theme="dark"] .markdown th, html[data-theme="dark"] .markdown td { border-color: #3f3f46; }
 .markdown li.task-list-item { list-style: none; margin-left: -1.25em; }
 .markdown li.task-list-item input { margin-right: 0.4em; }
 
@@ -121,7 +140,7 @@
   --viz-edge: #c3c2b7;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  html[data-theme="system"] {
     --viz-mark: #3987e5;
     --viz-ink: #f0efec;
     --viz-ink-2: #c3c2b7;
@@ -131,12 +150,21 @@
     --viz-edge: #4a4a46;
   }
 }
+html[data-theme="dark"] {
+  --viz-mark: #3987e5;
+  --viz-ink: #f0efec;
+  --viz-ink-2: #c3c2b7;
+  --viz-muted: #898781;
+  --viz-grid: #2c2c2a;
+  --viz-axis: #383835;
+  --viz-edge: #4a4a46;
+}
 
 /* 図の中で、キーボードで選んでいる棒や円に輪郭を付ける */
 .viz-focus:focus-visible .viz-mark { stroke: var(--viz-ink); stroke-width: 2.5; }
 
 @media (prefers-color-scheme: dark) {
-:root {
+  html[data-theme="system"] {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -170,6 +198,47 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 }
+html[data-theme="dark"] {
+--background: oklch(0.145 0 0);
+--foreground: oklch(0.985 0 0);
+--card: oklch(0.205 0 0);
+--card-foreground: oklch(0.985 0 0);
+--popover: oklch(0.205 0 0);
+--popover-foreground: oklch(0.985 0 0);
+--primary: oklch(0.922 0 0);
+--primary-foreground: oklch(0.205 0 0);
+--secondary: oklch(0.269 0 0);
+--secondary-foreground: oklch(0.985 0 0);
+--muted: oklch(0.269 0 0);
+--muted-foreground: oklch(0.708 0 0);
+--accent: oklch(0.269 0 0);
+--accent-foreground: oklch(0.985 0 0);
+--destructive: oklch(0.704 0.191 22.216);
+--border: oklch(1 0 0 / 10%);
+--input: oklch(1 0 0 / 15%);
+--ring: oklch(0.556 0 0);
+--chart-1: oklch(0.87 0 0);
+--chart-2: oklch(0.556 0 0);
+--chart-3: oklch(0.439 0 0);
+--chart-4: oklch(0.371 0 0);
+--chart-5: oklch(0.269 0 0);
+--sidebar: oklch(0.205 0 0);
+--sidebar-foreground: oklch(0.985 0 0);
+--sidebar-primary: oklch(0.488 0.243 264.376);
+--sidebar-primary-foreground: oklch(0.985 0 0);
+--sidebar-accent: oklch(0.269 0 0);
+--sidebar-accent-foreground: oklch(0.985 0 0);
+--sidebar-border: oklch(1 0 0 / 10%);
+--sidebar-ring: oklch(0.556 0 0);
+}
+
+html[data-theme="light"] { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-width="wide"] { --page-max: 100%; --page-max-lg: 100%; }
+/* 文字の大きさ。Tailwind の大きさは rem なので、余白や部品も一緒に大きくなる */
+html[data-font="small"] { font-size: 87.5%; }
+html[data-font="large"] { font-size: 112.5%; }
+html[data-font="xlarge"] { font-size: 125%; }
 
 @layer base {
   * {

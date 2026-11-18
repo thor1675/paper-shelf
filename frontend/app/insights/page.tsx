@@ -84,7 +84,7 @@ function Section({
   table: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-2 rounded border border-zinc-200 p-4 dark:border-zinc-800">
+    <section className="flex min-w-0 flex-col gap-2 rounded border border-zinc-200 p-4 dark:border-zinc-800">
       <h2 className="text-lg font-bold">{title}</h2>
       <p className="text-sm text-zinc-500">{note}</p>
       {children}
@@ -160,7 +160,7 @@ export default async function InsightsPage({
 
   if (!papers || !years || !tagGraph || !authorGraph) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-10">
+      <main className="mx-auto w-full max-w-(--page-max) px-4 py-10">
         <p className="text-red-600">データを取得できませんでした。backend が起動しているか確認してください</p>
       </main>
     );
@@ -169,7 +169,7 @@ export default async function InsightsPage({
   const statusCount = (s: string) => papers.filter((p) => p.status === s).length;
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
+    <main className="flex mx-auto w-full max-w-(--page-max) flex-col gap-6 px-4 py-10">
       <Link href="/" className="text-sm text-zinc-500 hover:underline">
         ← 一覧へ
       </Link>
@@ -187,6 +187,8 @@ export default async function InsightsPage({
         ))}
       </div>
 
+      {/* 幅を「余白を減らす」にしたときは、広い画面で図を 2 列に並べる（1 列のままだと、幅に合わせて図が縦にも大きくなりすぎる） */}
+      <div className="grid gap-6 wide:xl:grid-cols-2">
       <Section
         title="公開年ごとの本数"
         note="arXiv に初版が出た年。棒にカーソルを合わせると本数が出ます"
@@ -344,6 +346,7 @@ export default async function InsightsPage({
           </p>
         )}
       </Section>
+      </div>
     </main>
   );
 }

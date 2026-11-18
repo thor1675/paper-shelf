@@ -35,7 +35,7 @@ export default async function CitationsPage({
   const c = map?.center;
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10">
+    <main className="flex mx-auto w-full max-w-(--page-max-lg) flex-col gap-6 px-4 py-10">
       <h1 className="text-2xl font-bold">引用図</h1>
 
       <Form action="/citations" className="flex gap-2">

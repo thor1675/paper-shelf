@@ -41,7 +41,7 @@ export function SlackLinkBox({ linked }: { linked: boolean }) {
   }
 
   async function unlink() {
-    if (!(await ask({ title: "Slack との紐づけを外しますか？", description: "外すと、Slack に貼ったリンクや新着通知の「保存」があなたの本棚に入らなくなります", action: "外す", destructive: true }))) return;
+    if (!(await ask({ title: "Slack との紐づけを解除しますか？", description: "解除すると、Slack に貼ったリンクや新着通知の「保存」があなたの本棚に保存されなくなります", action: "解除", destructive: true }))) return;
     const res = await apiFetch(`${BROWSER_API_URL}/auth/slack-link`, { method: "DELETE" }).catch(() => null);
     if (res?.ok) router.refresh();
     else setError(res ? await errorMessage(res) : "backend に接続できませんでした");
@@ -52,17 +52,16 @@ export function SlackLinkBox({ linked }: { linked: boolean }) {
       {dialog}
       {linked ? (
         <div className="flex items-center gap-3">
-          <span>紐づけ済み</span>
-          <button type="button" onClick={unlink} className="text-zinc-500 underline">
-            紐づけを外す
-          </button>
+          <span>Slack と紐づけ済み</span>
+          <Button variant="link" size="sm" className="text-muted-foreground" onClick={unlink}>
+            紐づけを解除
+          </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-3">
-          <span className="text-zinc-500">紐づけていません</span>
-          <button type="button" onClick={issue} className="rounded border border-zinc-300 px-3 py-1 dark:border-zinc-700">
+        <div>
+          <Button variant="outline" size="sm" onClick={issue}>
             紐づけのコードを発行
-          </button>
+          </Button>
         </div>
       )}
       {code && !linked && (
@@ -228,7 +227,7 @@ export function GitHubLinkBox({ login, enabled }: { login: string | null; enable
   const [error, setError] = useState<string | null>(null);
 
   async function unlink() {
-    if (!(await ask({ title: "GitHub との紐づけを外しますか？", description: "外すと「GitHub でログイン」が使えなくなります。ユーザー名とパスワードでのログインはそのまま使えます", action: "外す", destructive: true }))) return;
+    if (!(await ask({ title: "GitHub との紐づけを解除しますか？", description: "解除すると「GitHub でログイン」が使えなくなります。ユーザー名とパスワードでのログインはそのまま使えます", action: "解除", destructive: true }))) return;
     const res = await apiFetch(`${BROWSER_API_URL}/auth/github-link`, { method: "DELETE" }).catch(() => null);
     if (res?.ok) router.replace("/settings");
     else setError(res ? await errorMessage(res) : "backend に接続できませんでした");
@@ -246,7 +245,7 @@ export function GitHubLinkBox({ login, enabled }: { login: string | null; enable
             {login} と紐づけ済み
           </span>
           <Button variant="link" size="sm" className="text-muted-foreground" onClick={unlink}>
-            紐づけを外す
+            紐づけを解除
           </Button>
         </div>
       ) : (

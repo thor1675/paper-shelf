@@ -16,7 +16,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-10">
+    <main className="flex mx-auto w-full max-w-(--page-max) flex-col gap-4 px-4 py-10">
       <h1 className="text-xl font-bold">表示できませんでした</h1>
       <p className="text-zinc-600 dark:text-zinc-400">
         backend が起動しているか確認してください（<code>docker compose ps</code>）
