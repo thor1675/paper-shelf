@@ -42,6 +42,10 @@ def test_build_note():
 class FakeClient:
     def __init__(self):
         self.reactions: list[str] = []
+        self.ephemeral: list[dict] = []
+
+    def chat_postEphemeral(self, **kw):
+        self.ephemeral.append(kw)
 
     def users_info(self, user):
         return {"user": {"profile": {"display_name": "ryousei"}}}
@@ -62,15 +66,25 @@ class FakeBackend:
     def __init__(self, results: dict[str, int], patch_fails: bool = False):
         self.results, self.patch_fails = results, patch_fails
         self.notes: dict[int, str] = {}
+        self.headers: list[dict] = []
+        self.links: list[dict] = []
 
-    def post(self, url, json, timeout):
+    def post(self, url, json, timeout, headers=None):
+        self.headers.append(headers)
+        if url.endswith("/bot/slack-link"):
+            self.links.append(json)
+            ok = json["code"] == "ps-link-ABCD2345"
+            return httpx.Response(200 if ok else 404, json={"username": "alice"} if ok else {"detail": "期限切れ"},
+                                  request=httpx.Request("POST", url))
         code = self.results[json["arxiv_id"]]
+        if code == 403:
+            return httpx.Response(403, json={"detail": "紐づいていません"}, request=httpx.Request("POST", url))
         if code == -1:
             raise httpx.ConnectError("down")
         return httpx.Response(code, json={"id": 1} if code == 201 else {"detail": "x"},
                               request=httpx.Request("POST", url))
 
-    def patch(self, url, json, timeout):
+    def patch(self, url, json, timeout, headers=None):
         status = 500 if self.patch_fails else 200
         if not self.patch_fails:
             self.notes[int(url.rsplit("/", 1)[1])] = json["note"]
@@ -90,12 +104,16 @@ def run(monkeypatch):
                 return f
             return deco
 
+        def action(self, action_id):
+            return lambda f: f
+
     def _run(text, backend, **event):
         monkeypatch.setattr(bot.httpx, "post", backend.post)
         monkeypatch.setattr(bot.httpx, "patch", backend.patch)
         app, client = App(), FakeClient()
         bot.register(app)
         app.handler({"channel": "C1", "ts": "1.0", "user": "U1", "text": text, **event}, client, Logger())
+        backend.client = client
         return client.reactions
 
     return _run
@@ -137,3 +155,33 @@ def test_ignored_messages(run, event):
 
 def test_message_without_link(run):
     assert run("こんにちは", FakeBackend({})) == []
+
+
+def test_sends_bot_token_and_slack_user(run, monkeypatch):
+    # backend には合言葉と、投稿した人の Slack ID を送る（その人の本棚に入る）
+    monkeypatch.setattr(bot, "BOT_TOKEN", "secret")
+    backend = FakeBackend({"1810.04805": 201})
+    run("arXiv:1810.04805", backend)
+    assert backend.headers[0] == {"X-Bot-Token": "secret", "X-Slack-User": "U1"}
+
+
+def test_unlinked_user_gets_ephemeral_and_no_reaction(run):
+    backend = FakeBackend({"1810.04805": 403, "1706.03762": 201})
+    assert run("arXiv:1810.04805 arXiv:1706.03762", backend) == []
+    assert backend.client.ephemeral == [{"channel": "C1", "user": "U1", "text": "紐づいていません"}]
+    # 1 本目で分かったので、2 本目は送らない
+    assert len(backend.headers) == 1
+
+
+@pytest.mark.parametrize(
+    "code, text",
+    [
+        ("ps-link-ABCD2345", "PAPER - Shelf の「alice」と紐づけました。リンクを貼ると、あなたの本棚に保存されます"),
+        ("ps-link-ZZZZ2345", "期限切れ"),
+    ],
+)
+def test_link_code(run, code, text):
+    backend = FakeBackend({})
+    assert run(f"{code}", backend) == []
+    assert backend.links == [{"code": code, "slack_user_id": "U1"}]
+    assert backend.client.ephemeral[0]["text"] == text
