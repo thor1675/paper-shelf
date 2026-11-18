@@ -7,3 +7,14 @@ __pycache__/
 .DS_Store
 .pytest_cache/
 backups/
+# レポート（LaTeX）のテンプレートの zip と、コンパイルでできる中間ファイル
+nlp2026-template_v1_1.zip
+report/*.aux
+report/*.log
+report/*.dvi
+report/*.fls
+report/*.fdb_latexmk
+report/*.synctex.gz
+report/*.out
+report/*.bbl
+report/*.blg
