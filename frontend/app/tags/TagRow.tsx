@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useConfirm } from "@/components/useConfirm";
 import { BROWSER_API_URL, apiFetch, errorMessage } from "@/lib/api";
 
 // タグ 1 つ分。名前を変える（既にある名前にすると 1 つにまとまる）・全部の論文から外す
 export default function TagRow({ name, count, others }: { name: string; count: number; others: string[] }) {
+  const { confirm: ask, dialog } = useConfirm();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
@@ -38,7 +40,7 @@ export default function TagRow({ name, count, others }: { name: string; count: n
   async function rename(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!target || target === name) return setEditing(false);
-    if (merging && !confirm(`「${name}」を「${target}」にまとめますか？（${count} 本の論文が対象）`)) return;
+    if (merging && !(await ask({ title: `「${name}」を「${target}」にまとめますか？`, description: `${count} 本の論文が対象です`, action: "まとめる" }))) return;
     if (
       await call(`${BROWSER_API_URL}/tags/rename`, {
         method: "POST",
@@ -50,12 +52,13 @@ export default function TagRow({ name, count, others }: { name: string; count: n
   }
 
   async function remove() {
-    if (!confirm(`「${name}」を ${count} 本の論文から外しますか？（論文は消えません）`)) return;
+    if (!(await ask({ title: `「${name}」を ${count} 本の論文から外しますか？`, description: "論文は消えません", action: "外す", destructive: true }))) return;
     await call(`${BROWSER_API_URL}/tags/${encodeURIComponent(name)}`, { method: "DELETE" });
   }
 
   return (
     <li className="flex flex-col gap-1 px-4 py-2">
+      {dialog}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {editing ? (
           <form onSubmit={rename} className="flex flex-1 flex-wrap items-center gap-2">

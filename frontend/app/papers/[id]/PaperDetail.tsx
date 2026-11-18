@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useConfirm } from "@/components/useConfirm";
 import Markdown from "@/app/Markdown";
 
 import RelatedPapers from "./RelatedPapers";
@@ -30,6 +31,7 @@ export default function PaperDetail({
   paper: Paper;
   allTags: string[];
 }) {
+  const { confirm: ask, dialog } = useConfirm();
   const router = useRouter();
   // 表示している論文。サーバから受け取るのは最初の 1 回だけで、以降は PATCH の応答で更新する。
   // router.refresh() の結果を待って古いメモを元に次の保存をすると、直前の変更が消えるため
@@ -125,7 +127,7 @@ export default function PaperDetail({
   }
 
   async function remove() {
-    if (!confirm(`「${paper.title}」を削除しますか？`)) return;
+    if (!(await ask({ title: "論文を本棚から削除しますか？", description: paper.title, action: "削除", destructive: true }))) return;
     setBusy(true);
     try {
       const res = await apiFetch(`${BROWSER_API_URL}/papers/${paper.id}`, {
@@ -155,6 +157,7 @@ export default function PaperDetail({
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
+      {dialog}
       <Link
         href="/"
         className="text-sm text-zinc-500 hover:underline"

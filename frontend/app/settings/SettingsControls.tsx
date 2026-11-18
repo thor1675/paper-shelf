@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { BROWSER_API_URL, apiFetch, errorMessage } from "@/lib/api";
+import { useConfirm } from "@/components/useConfirm";
+import { GitHubMark } from "@/components/GitHubMark";
+import { Button } from "@/components/ui/button";
+import { BROWSER_API_URL, apiFetch, errorMessage, githubStartUrl } from "@/lib/api";
 
 type Code = { code: string; expires_at: string };
 
@@ -24,6 +27,7 @@ export function LogoutButton() {
 }
 
 export function SlackLinkBox({ linked }: { linked: boolean }) {
+  const { confirm: ask, dialog } = useConfirm();
   const router = useRouter();
   const [code, setCode] = useState<Code | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +41,7 @@ export function SlackLinkBox({ linked }: { linked: boolean }) {
   }
 
   async function unlink() {
-    if (!confirm("Slack との紐づけを外しますか？")) return;
+    if (!(await ask({ title: "Slack との紐づけを外しますか？", description: "外すと、Slack に貼ったリンクや新着通知の「保存」があなたの本棚に入らなくなります", action: "外す", destructive: true }))) return;
     const res = await apiFetch(`${BROWSER_API_URL}/auth/slack-link`, { method: "DELETE" }).catch(() => null);
     if (res?.ok) router.refresh();
     else setError(res ? await errorMessage(res) : "backend に接続できませんでした");
@@ -45,6 +49,7 @@ export function SlackLinkBox({ linked }: { linked: boolean }) {
 
   return (
     <div className="flex flex-col gap-2 text-sm">
+      {dialog}
       {linked ? (
         <div className="flex items-center gap-3">
           <span>紐づけ済み</span>
@@ -213,6 +218,49 @@ export function AccountBox({ username }: { username: string }) {
       </form>
 
       {message && <p className={message.ok ? "text-green-700 dark:text-green-400" : "text-red-600"}>{message.text}</p>}
+    </div>
+  );
+}
+
+export function GitHubLinkBox({ login, enabled }: { login: string | null; enabled: boolean }) {
+  const router = useRouter();
+  const { confirm: ask, dialog } = useConfirm();
+  const [error, setError] = useState<string | null>(null);
+
+  async function unlink() {
+    if (!(await ask({ title: "GitHub との紐づけを外しますか？", description: "外すと「GitHub でログイン」が使えなくなります。ユーザー名とパスワードでのログインはそのまま使えます", action: "外す", destructive: true }))) return;
+    const res = await apiFetch(`${BROWSER_API_URL}/auth/github-link`, { method: "DELETE" }).catch(() => null);
+    if (res?.ok) router.replace("/settings");
+    else setError(res ? await errorMessage(res) : "backend に接続できませんでした");
+    router.refresh();
+  }
+
+  if (!enabled && !login) return <p className="text-sm text-muted-foreground">この PAPER - Shelf では GitHub でのログインが設定されていません（README の「GitHub でログイン」）</p>;
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      {dialog}
+      {login ? (
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <GitHubMark />
+            {login} と紐づけ済み
+          </span>
+          <Button variant="link" size="sm" className="text-muted-foreground" onClick={unlink}>
+            紐づけを外す
+          </Button>
+        </div>
+      ) : (
+        <div>
+          {/* GitHub の画面へ移るので、普通のリンクにする */}
+          <Button variant="outline" size="sm" asChild>
+            <a href={githubStartUrl("link", "/settings")}>
+              <GitHubMark />
+              GitHub と紐づける
+            </a>
+          </Button>
+        </div>
+      )}
+      {error && <p className="text-destructive">{error}</p>}
     </div>
   );
 }

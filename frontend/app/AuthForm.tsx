@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { BROWSER_API_URL, apiFetch, errorMessage } from "@/lib/api";
 
 // ログインと新規登録の入力欄。成功したら画面ごと読み直す（上のメニューにユーザー名を出すため）
@@ -45,38 +48,39 @@ export default function AuthForm({
     }
   }
 
-  const input = "rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700";
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1 text-sm">
-        ユーザー名
-        <input name="username" required autoComplete="username" className={input} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        パスワード{mode === "register" && <span className="text-xs text-zinc-500">8 文字以上</span>}
-        <input
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="username">ユーザー名</Label>
+        <Input id="username" name="username" required autoComplete="username" />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="password">
+          パスワード{mode === "register" && <span className="text-xs font-normal text-muted-foreground">8 文字以上</span>}
+        </Label>
+        <Input
+          id="password"
           name="password"
           type="password"
           required
           minLength={mode === "register" ? 8 : undefined}
           autoComplete={mode === "login" ? "current-password" : "new-password"}
-          className={input}
         />
-      </label>
+      </div>
       {mode === "register" && needsInvite && (
-        <label className="flex flex-col gap-1 text-sm">
-          招待コード
-          <input name="invite_code" required autoComplete="off" className={`${input} font-mono uppercase`} />
-        </label>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="invite_code">招待コード</Label>
+          <Input id="invite_code" name="invite_code" required autoComplete="off" className="font-mono uppercase" />
+        </div>
       )}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded bg-zinc-900 px-4 py-2 text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
-      >
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <Button type="submit" disabled={busy}>
         {busy ? "送信中…" : mode === "login" ? "ログイン" : "登録"}
-      </button>
+      </Button>
     </form>
   );
 }

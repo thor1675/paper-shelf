@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useConfirm } from "@/components/useConfirm";
 import { BROWSER_API_URL, apiFetch, errorMessage } from "@/lib/api";
 
 // キーワードの追加
@@ -61,11 +62,12 @@ export function AddWatchForm() {
 
 // キーワードの削除
 export function DeleteWatchButton({ id, query }: { id: number; query: string }) {
+  const { confirm: ask, dialog } = useConfirm();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function remove() {
-    if (!confirm(`「${query}」の通知をやめますか？`)) return;
+    if (!(await ask({ title: `「${query}」の通知をやめますか？`, action: "やめる", destructive: true }))) return;
     setBusy(true);
     try {
       const res = await apiFetch(`${BROWSER_API_URL}/watches/${id}`, { method: "DELETE" });
@@ -79,6 +81,8 @@ export function DeleteWatchButton({ id, query }: { id: number; query: string }) 
   }
 
   return (
+    <>
+    {dialog}
     <button
       type="button"
       onClick={remove}
@@ -88,5 +92,6 @@ export function DeleteWatchButton({ id, query }: { id: number; query: string }) 
     >
       削除
     </button>
+    </>
   );
 }

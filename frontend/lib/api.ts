@@ -37,7 +37,22 @@ export const BROWSER_API_URL =
 // ログインの Cookie の名前（backend の auth.py と同じ）
 export const SESSION_COOKIE = "ps_session";
 
-export type Me = { id: number; username: string; slack_linked: boolean };
+export type Me = { id: number; username: string; slack_linked: boolean; github_login: string | null };
+
+// GitHub でのログイン（OAuth2）。backend が GitHub の認可画面へ移し、終わると画面に戻す
+export function githubStartUrl(mode: "login" | "link", next = "/"): string {
+  return `${BROWSER_API_URL}/auth/github/start?${new URLSearchParams({ mode, next })}`;
+}
+
+// backend が ?github_error= で返す理由を日本語にする
+export const GITHUB_ERRORS: Record<string, string> = {
+  not_linked: "この GitHub アカウントは PAPER - Shelf に紐づいていません。ユーザー名とパスワードでログインしてから、設定画面で GitHub と紐づけてください",
+  denied: "GitHub での許可がキャンセルされました",
+  state: "ログインの手続きが途中で切れました。もう一度試してください",
+  github: "GitHub とのやり取りに失敗しました。もう一度試してください",
+  taken: "この GitHub アカウントは、ほかのユーザーに紐づいています",
+  login_required: "ログインしてから紐づけてください",
+};
 
 // ブラウザから backend を呼ぶ。ログインの Cookie を一緒に送り、ログインが切れていたらログイン画面へ移る
 export async function apiFetch(input: string, init?: RequestInit): Promise<Response> {

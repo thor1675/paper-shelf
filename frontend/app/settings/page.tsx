@@ -1,20 +1,27 @@
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 
-import type { Me } from "@/lib/api";
+import { GITHUB_ERRORS, type Me } from "@/lib/api";
 import { serverFetch } from "@/lib/server";
 
-import { InviteBox, LogoutButton, SlackLinkBox } from "./SettingsControls";
+import { GitHubLinkBox, InviteBox, LogoutButton, SlackLinkBox } from "./SettingsControls";
 
 type Code = { code: string; expires_at: string };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ github?: string; github_error?: string }>;
+}) {
+  const { github, github_error } = await searchParams;
+  let githubEnabled = false;
   let me: Me | null = null;
   let invites: Code[] = [];
   try {
-    const [m, i] = await Promise.all([serverFetch("/auth/me"), serverFetch("/auth/invites")]);
+    const [m, i, setup] = await Promise.all([serverFetch("/auth/me"), serverFetch("/auth/invites"), serverFetch("/auth/setup")]);
     if (m.ok) me = await m.json();
     if (i.ok) invites = await i.json();
+    if (setup.ok) githubEnabled = (await setup.json()).github_enabled;
   } catch (e) {
     unstable_rethrow(e);
   }
@@ -33,6 +40,16 @@ export default async function SettingsPage() {
             ユーザー名・パスワードを変更 →
           </Link>
         </div>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-bold">GitHub との紐づけ</h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          紐づけると、ログイン画面の「GitHub でログイン」で入れます（OAuth2）。PAPER - Shelf は GitHub の公開されている名前と ID だけを受け取り、パスワードやリポジトリには触れません
+        </p>
+        {github === "linked" && <p className="text-sm text-green-700 dark:text-green-400">GitHub と紐づけました</p>}
+        {github_error && <p role="alert" className="text-sm text-destructive">{GITHUB_ERRORS[github_error] ?? GITHUB_ERRORS.github}</p>}
+        <GitHubLinkBox login={me.github_login} enabled={githubEnabled} />
       </section>
 
       <section className="flex flex-col gap-2">

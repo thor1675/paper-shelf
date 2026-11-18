@@ -15,12 +15,14 @@ import {
   formatAuthors,
   formatCount,
 } from "@/lib/api";
+import { useConfirm } from "@/components/useConfirm";
 import { type Filters, toggleTag } from "@/lib/filters";
 
 import StatusSelect from "./StatusSelect";
 
 // 論文の一覧。チェックを付けた論文に、まとめてタグを付け外しする・状態を変える・削除する
 export default function PaperList({ papers, filters, allTags }: { papers: Paper[]; filters: Filters; allTags: string[] }) {
+  const { confirm: ask, dialog } = useConfirm();
   const router = useRouter();
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [tagInput, setTagInput] = useState("");
@@ -72,12 +74,13 @@ export default function PaperList({ papers, filters, allTags }: { papers: Paper[
   }
 
   async function remove() {
-    if (!confirm(`選んだ ${selected.length} 件を削除しますか？（元に戻せません）`)) return;
+    if (!(await ask({ title: `選んだ ${selected.length} 件を削除しますか？`, description: "元に戻せません", action: "削除", destructive: true }))) return;
     if (await apply({ delete: true }, `${selected.length} 件を削除しました`)) setChecked(new Set());
   }
 
   return (
     <div className="flex flex-col gap-3">
+      {dialog}
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2">
           <input
