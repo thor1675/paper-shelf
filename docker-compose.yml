@@ -22,6 +22,11 @@ services:
       - "127.0.0.1:8000:8000"
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # OpenAlex の「丁寧な利用者」の枠に入るための連絡先（任意）
+      - OPENALEX_MAILTO=${OPENALEX_MAILTO:-}
+      - TRANSLATOR_URL=http://translator:8001
+      # slackbot からの操作を受け付けるための合言葉（slackbot と同じ値）
+      - BOT_TOKEN=${BOT_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
@@ -33,6 +38,19 @@ services:
       retries: 10
       start_period: 10s
 
+  # 英→日の翻訳（Hugging Face の FuguMT を CPU で動かす）。backend からだけ使うのでポートは外に出さない
+  translator:
+    build: ./translator
+    volumes:
+      - ./translator/app.py:/app/app.py
+      - ./translator/tests:/app/tests
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
   slackbot:
     build: ./slackbot
     volumes:
@@ -40,7 +58,11 @@ services:
     environment:
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
       - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
+      # 新着を知らせるチャンネルの ID（C から始まる）と時刻（日本時間）
+      - SLACK_NOTIFY_CHANNEL=${SLACK_NOTIFY_CHANNEL:-}
+      - NOTIFY_HOUR=${NOTIFY_HOUR:-9}
       - API_URL=http://backend:8000
+      - BOT_TOKEN=${BOT_TOKEN:-}
     depends_on:
       backend:
         condition: service_healthy
