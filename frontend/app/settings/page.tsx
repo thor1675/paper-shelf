@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 
 import type { Me } from "@/lib/api";
 import { serverFetch } from "@/lib/server";
 
-import { AccountBox, InviteBox, LogoutButton, SlackLinkBox } from "./SettingsControls";
+import { InviteBox, LogoutButton, SlackLinkBox } from "./SettingsControls";
 
 type Code = { code: string; expires_at: string };
 
@@ -24,11 +25,14 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-bold">設定</h1>
         <LogoutButton />
       </div>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">ユーザー名: {me.username}</p>
-
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-bold">アカウント</h2>
-        <AccountBox username={me.username} />
+        <div className="flex items-center gap-3 text-sm">
+          <span>ユーザー名: {me.username}</span>
+          <Link href="/settings/account" className="rounded border border-zinc-300 px-3 py-1 dark:border-zinc-700">
+            ユーザー名・パスワードを変更 →
+          </Link>
+        </div>
       </section>
 
       <section className="flex flex-col gap-2">
