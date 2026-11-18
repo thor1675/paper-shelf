@@ -39,7 +39,9 @@ def callback(c, state, code="good-code"):
     return c.get("/auth/github/callback", params={"code": code, "state": state}, follow_redirects=False)
 
 
-def test_disabled_without_client_id(client):
+def test_disabled_without_client_id(client, monkeypatch):
+    monkeypatch.setattr(github_oauth, "GITHUB_CLIENT_ID", "")
+    monkeypatch.setattr(github_oauth, "GITHUB_CLIENT_SECRET", "")
     assert TestClient(main.app).get("/auth/setup").json()["github_enabled"] is False
     assert client.get("/auth/github/start", follow_redirects=False).status_code == 404
 
