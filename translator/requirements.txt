@@ -1,0 +1,11 @@
+# バージョンを固定する（作り直しただけで壊れないように）
+ctranslate2==4.8.3
+transformers==4.57.6
+sentencepiece==0.2.0
+# Marian の前処理に使う（無いと警告が出る）
+sacremoses==0.1.1
+fastapi==0.162.2
+uvicorn==0.54.0
+# テスト用
+pytest==9.2.0
+httpx==0.28.1
