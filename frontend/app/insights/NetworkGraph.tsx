@@ -5,16 +5,24 @@ import { useMemo, useState } from "react";
 
 import { FONT, type PlacedGraph } from "@/lib/graphLayout";
 
-const MAX_LABELS = 40;
+const MAX_LABELS = 80;
 
 export default function NetworkGraph({
   graph,
   param,
   unit = "本",
+  hrefs,
+  titles,
+  action = "クリックすると一覧で絞り込み",
 }: {
   graph: PlacedGraph;
-  param: "tag" | "author";
+  // 押したときの移動先。hrefs があればそれを使い、無ければ一覧の絞り込み（?tag= / ?author=）
+  param?: "tag" | "author";
   unit?: string;
+  hrefs?: Record<string, string>;
+  // ツールチップに出す題名（論文の図で、円の名前が「Vaswani 2017」のように短いとき）
+  titles?: Record<string, string>;
+  action?: string;
 }) {
   const router = useRouter();
   const [active, setActive] = useState<string | null>(null);
@@ -41,7 +49,7 @@ export default function NetworkGraph({
   );
   const isLit = (id: string) => active === null || id === active || !!neighbors.get(active)?.has(id);
   const activeNode = nodes.find((n) => n.id === active);
-  const go = (id: string) => router.push(`/?${param}=${encodeURIComponent(id)}`);
+  const go = (id: string) => router.push(hrefs?.[id] ?? `/?${param}=${encodeURIComponent(id)}`);
 
   return (
     <div className="relative">
@@ -67,7 +75,7 @@ export default function NetworkGraph({
             key={n.id}
             role="link"
             tabIndex={0}
-            aria-label={`${n.id}（${n.count}${unit}）で絞り込む`}
+            aria-label={`${titles?.[n.id] ?? n.id}（${n.count}${unit}）${hrefs ? "を開く" : "で絞り込む"}`}
             className="viz-focus cursor-pointer outline-none"
             opacity={isLit(n.id) ? 1 : 0.25}
             onPointerEnter={() => setActive(n.id)}
@@ -120,8 +128,9 @@ export default function NetworkGraph({
             {activeNode.count} {unit}
           </span>
           <span className="ml-1 text-zinc-500">{activeNode.id}</span>
+          {titles?.[activeNode.id] && <div className="max-w-72 font-semibold">{titles[activeNode.id]}</div>}
           <div className="text-zinc-500">
-            つながり {neighbors.get(activeNode.id)?.size ?? 0} 本 · 押すと一覧で絞り込み
+            つながり {neighbors.get(activeNode.id)?.size ?? 0} 本 · {action}
           </div>
         </div>
       )}

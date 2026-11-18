@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-type YearCount = { year: number; count: number };
+// short は横軸に出す短い表記（"2024年" → "'24" など）。サーバから関数は渡せないので、値で受け取る
+type Bar = { label: string; short: string; count: number };
 
 const W = 640;
 const H = 220;
@@ -15,17 +16,18 @@ function niceStep(max: number) {
   return [1, 2, 5, 10].map((m) => m * pow).find((s) => s >= raw) ?? raw;
 }
 
-export default function YearChart({ data }: { data: YearCount[] }) {
+// 縦棒グラフ。棒の並びと抜けの埋め方（年や月）は呼ぶ側で決める
+export default function BarChart({
+  data,
+  ariaLabel,
+}: {
+  data: Bar[];
+  ariaLabel: string;
+}) {
   const [active, setActive] = useState<number | null>(null);
   if (data.length === 0) return <p className="text-sm text-zinc-500">まだ論文がありません</p>;
 
-  // 論文の無い年も 0 件として並べる（年が飛ぶと間隔が嘘になる）
-  const first = Math.min(...data.map((d) => d.year));
-  const last = Math.max(...data.map((d) => d.year));
-  const years: YearCount[] = [];
-  for (let y = first; y <= last; y++) {
-    years.push({ year: y, count: data.find((d) => d.year === y)?.count ?? 0 });
-  }
+  const years = data;
 
   const maxCount = Math.max(...years.map((d) => d.count));
   const step = niceStep(maxCount);
@@ -38,11 +40,11 @@ export default function YearChart({ data }: { data: YearCount[] }) {
   const barW = Math.min(24, band * 0.6);
   const y = (v: number) => PAD.top + plotH - (v / top) * plotH;
   const peak = years.reduce((a, b) => (b.count > a.count ? b : a));
-  const activeYear = years.find((d) => d.year === active);
+  const activeYear = active === null ? undefined : years[active];
 
   return (
     <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="group" aria-label="公開年ごとの論文数">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="group" aria-label={ariaLabel}>
         {ticks.map((t) => (
           <g key={t}>
             <line
@@ -80,14 +82,14 @@ export default function YearChart({ data }: { data: YearCount[] }) {
               : "";
           return (
             <g
-              key={d.year}
+              key={d.label}
               tabIndex={0}
-              onPointerEnter={() => setActive(d.year)}
+              onPointerEnter={() => setActive(i)}
               onPointerLeave={() => setActive(null)}
-              onFocus={() => setActive(d.year)}
+              onFocus={() => setActive(i)}
               onBlur={() => setActive(null)}
               className="viz-focus outline-none"
-              aria-label={`${d.year}年 ${d.count}本`}
+              aria-label={`${d.label} ${d.count}本`}
             >
               {/* 当たり判定は棒より広く、帯全体にする */}
               <rect x={PAD.left + band * i} y={PAD.top} width={band} height={plotH} fill="transparent" />
@@ -96,17 +98,17 @@ export default function YearChart({ data }: { data: YearCount[] }) {
                   d={path}
                   className="viz-mark"
                   fill="var(--viz-mark)"
-                  opacity={active === null || active === d.year ? 1 : 0.45}
+                  opacity={active === null || active === i ? 1 : 0.45}
                 />
               )}
               {/* 一番多い年だけ数を出す。触れている間はツールチップと重なるので隠す */}
-              {d.year === peak.year && active === null && (
+              {d === peak && active === null && (
                 <text x={cx} y={y(d.count) - 6} textAnchor="middle" fontSize={11} fill="var(--viz-ink-2)">
                   {d.count}
                 </text>
               )}
               <text x={cx} y={H - 6} textAnchor="middle" fontSize={11} fill="var(--viz-muted)">
-                {years.length > 12 && i % 2 === 1 ? "" : `'${String(d.year).slice(2)}`}
+                {years.length > 12 && i % 2 === 1 ? "" : d.short}
               </text>
             </g>
           );
@@ -118,12 +120,12 @@ export default function YearChart({ data }: { data: YearCount[] }) {
           className="pointer-events-none absolute -translate-x-1/2 rounded border border-zinc-200 bg-white px-2 py-1 text-xs shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
           style={{
             // 端の棒でツールチップが外にはみ出さないよう、10%〜90% に収める
-            left: `${Math.min(90, Math.max(10, ((PAD.left + band * years.indexOf(activeYear) + band / 2) / W) * 100))}%`,
+            left: `${Math.min(90, Math.max(10, ((PAD.left + band * (active ?? 0) + band / 2) / W) * 100))}%`,
             top: 0,
           }}
         >
           <span className="font-semibold">{activeYear.count} 本</span>
-          <span className="ml-1 text-zinc-500">{activeYear.year}年</span>
+          <span className="ml-1 text-zinc-500">{activeYear.label}</span>
         </div>
       )}
     </div>

@@ -6,7 +6,7 @@ export type Filters = {
   status?: Status;
   author?: string;
   q?: string;
-  sort: "created_at" | "published";
+  sort: "created_at" | "published" | "citations";
   order: "asc" | "desc";
 };
 
@@ -29,7 +29,7 @@ export function parseFilters(sp: SearchParams): Filters {
     status: STATUSES.includes(status as Status) ? (status as Status) : undefined,
     author: first(sp.author),
     q: first(sp.q),
-    sort: sort === "published" ? "published" : "created_at",
+    sort: sort === "published" || sort === "citations" ? sort : "created_at",
     order: order === "asc" ? "asc" : "desc",
   };
 }

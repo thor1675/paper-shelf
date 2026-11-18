@@ -1,13 +1,18 @@
 import Form from "next/form";
 import Link from "next/link";
 
-import { STATUSES, STATUS_LABELS, type TagCount } from "@/lib/api";
-import { type Filters, filterHref, hasFilters, toggleTag } from "@/lib/filters";
+import { BROWSER_API_URL, STATUSES, STATUS_LABELS, type TagCount } from "@/lib/api";
+import { type Filters, filterHref, hasFilters, toQuery, toggleTag } from "@/lib/filters";
 
-const SORTS: { label: string; sort: Filters["sort"]; order: Filters["order"] }[] = [
-  { label: "追加が新しい順", sort: "created_at", order: "desc" },
-  { label: "公開が新しい順", sort: "published", order: "desc" },
-  { label: "公開が古い順", sort: "published", order: "asc" },
+// 並べる項目と向きは別々に選ぶ（項目を変えても向きはそのまま）
+const SORTS: { label: string; sort: Filters["sort"] }[] = [
+  { label: "追加順", sort: "created_at" },
+  { label: "公開順", sort: "published" },
+  { label: "被引用数順", sort: "citations" },
+];
+const ORDERS: { label: string; order: Filters["order"] }[] = [
+  { label: "降順", order: "desc" },
+  { label: "昇順", order: "asc" },
 ];
 
 function chip(active: boolean) {
@@ -65,7 +70,7 @@ export default function FilterBar({
       </Form>
 
       <div className="flex flex-wrap items-center gap-1">
-        <span className="mr-1 w-16 text-xs text-zinc-500">状態</span>
+        <span className="mr-1 w-16 text-xs text-zinc-500">ステータス</span>
         <Link href={filterHref(filters, { status: undefined })} className={chip(!filters.status)}>
           すべて
         </Link>
@@ -91,18 +96,28 @@ export default function FilterBar({
       <div className="flex flex-wrap items-center gap-1">
         <span className="mr-1 w-16 text-xs text-zinc-500">並び順</span>
         {SORTS.map((s) => (
-          <Link
-            key={s.label}
-            href={filterHref(filters, { sort: s.sort, order: s.order })}
-            className={chip(filters.sort === s.sort && filters.order === s.order)}
-          >
+          <Link key={s.sort} href={filterHref(filters, { sort: s.sort })} className={chip(filters.sort === s.sort)}>
             {s.label}
+          </Link>
+        ))}
+        <span className="mx-1 text-zinc-300 dark:text-zinc-700" aria-hidden>
+          |
+        </span>
+        {ORDERS.map((o) => (
+          <Link key={o.order} href={filterHref(filters, { order: o.order })} className={chip(filters.order === o.order)}>
+            {o.label}
           </Link>
         ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
         <span>{count} 件</span>
+        {/* 今の絞り込み条件のまま .bib をダウンロードする（ブラウザが backend から直接受け取る） */}
+        {count > 0 && (
+          <a href={`${BROWSER_API_URL}/papers/export.bib${toQuery(filters)}`} download className="underline">
+            BibTeX で書き出す
+          </a>
+        )}
         {filters.author && (
           <Link
             href={filterHref(filters, { author: undefined })}

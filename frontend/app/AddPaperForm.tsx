@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { BROWSER_API_URL, errorMessage } from "@/lib/api";
+import { BROWSER_API_URL, apiFetch, errorMessage } from "@/lib/api";
 
 export default function AddPaperForm() {
   const router = useRouter();
@@ -17,7 +17,7 @@ export default function AddPaperForm() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`${BROWSER_API_URL}/papers`, {
+      const res = await apiFetch(`${BROWSER_API_URL}/papers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ arxiv_id: arxivId }),

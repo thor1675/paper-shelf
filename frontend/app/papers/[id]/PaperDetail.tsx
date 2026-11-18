@@ -5,19 +5,23 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import Markdown from "@/app/Markdown";
+
+import RelatedPapers from "./RelatedPapers";
 import {
-  BROWSER_API_URL,
+  BROWSER_API_URL, apiFetch,
   type Paper,
   STATUSES,
   STATUS_LABELS,
   type Status,
   addTag,
+  citationHref,
   errorMessage,
+  formatCount,
 } from "@/lib/api";
+import { UNSAVED_MESSAGE, setUnsaved } from "@/lib/unsaved";
 
 type Draft = { status: Status; tags: string[]; note: string };
 
-const UNSAVED_MESSAGE = "変更が保存されていません。破棄して移動しますか？";
 
 export default function PaperDetail({
   paper: initialPaper,
@@ -43,6 +47,12 @@ export default function PaperDetail({
       draft.note !== paper.note ||
       draft.tags.join("\n") !== paper.tags.join("\n") ||
       tagInput.trim() !== "");
+
+  // 共通のナビゲーションから移動するときの警告に使う。画面を離れたら解除する
+  useEffect(() => {
+    setUnsaved(dirty);
+    return () => setUnsaved(false);
+  }, [dirty]);
 
   // タブを閉じる・再読み込みするときの警告
   useEffect(() => {
@@ -76,7 +86,7 @@ export default function PaperDetail({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${BROWSER_API_URL}/papers/${paper.id}`, {
+      const res = await apiFetch(`${BROWSER_API_URL}/papers/${paper.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -118,7 +128,7 @@ export default function PaperDetail({
     if (!confirm(`「${paper.title}」を削除しますか？`)) return;
     setBusy(true);
     try {
-      const res = await fetch(`${BROWSER_API_URL}/papers/${paper.id}`, {
+      const res = await apiFetch(`${BROWSER_API_URL}/papers/${paper.id}`, {
         method: "DELETE",
       });
       if (!res.ok) {
@@ -189,6 +199,26 @@ export default function PaperDetail({
           <a href={paper.pdf_url} target="_blank" rel="noopener noreferrer" className="underline">
             PDF
           </a>
+          {paper.citation_count !== null && <span>被引用 {formatCount(paper.citation_count)} 本</span>}
+          <Link
+            href={citationHref({ arxiv_id: paper.arxiv_id, work_id: paper.openalex_id ?? "" })}
+            className="underline"
+            onNavigate={(e) => {
+              if (dirty && !confirm(UNSAVED_MESSAGE)) e.preventDefault();
+            }}
+          >
+            引用関係を確認
+          </Link>
+          <Link
+            href={`/papers/${paper.id}/read`}
+            className="underline"
+            onNavigate={(e) => {
+              if (dirty && !confirm(UNSAVED_MESSAGE)) e.preventDefault();
+            }}
+          >
+            日本語で読む
+          </Link>
+          {paper.read_at && <span>読了日 {new Date(paper.read_at).toLocaleDateString("ja-JP")}</span>}
         </p>
       </header>
 
@@ -196,7 +226,7 @@ export default function PaperDetail({
         <>
           <section className="flex flex-col gap-4 rounded border border-zinc-300 p-4 dark:border-zinc-700">
             <label className="flex items-center gap-3">
-              <span className="w-12 text-sm font-semibold">状態</span>
+              <span className="w-12 text-sm font-semibold">ステータス</span>
               <select
                 value={draft.status}
                 onChange={(e) => setDraft({ ...draft, status: e.target.value as Status })}
@@ -384,6 +414,8 @@ export default function PaperDetail({
         </>
       )}
 
+
+      <RelatedPapers arxivId={paper.arxiv_id} />
     </main>
   );
 }

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useOptimistic, useTransition } from "react";
 
 import {
-  BROWSER_API_URL,
+  BROWSER_API_URL, apiFetch,
   STATUSES,
   STATUS_LABELS,
   type Status,
@@ -31,7 +31,7 @@ export default function StatusSelect({
     startTransition(async () => {
       setShown(next);
       try {
-        const res = await fetch(`${BROWSER_API_URL}/papers/${paperId}`, {
+        const res = await apiFetch(`${BROWSER_API_URL}/papers/${paperId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: next }),
@@ -51,7 +51,7 @@ export default function StatusSelect({
     <select
       value={shown}
       disabled={pending}
-      aria-label={`「${title}」の状態`}
+      aria-label={`「${title}」のステータス`}
       onChange={(e) => handleChange(e.target.value as Status)}
       className="shrink-0 rounded bg-zinc-100 px-2 py-0.5 text-xs disabled:opacity-70 dark:bg-zinc-800"
     >
