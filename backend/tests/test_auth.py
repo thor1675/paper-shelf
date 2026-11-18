@@ -27,7 +27,7 @@ def test_requires_login(client):
 
 def test_setup_and_invite_required(client):
     anon = TestClient(main.app)
-    assert anon.get("/auth/setup").json() == {"needs_setup": False}
+    assert anon.get("/auth/setup").json()["needs_setup"] is False
     res = anon.post("/auth/register", json={"username": "bob", "password": "password-b"})
     assert res.status_code == 403 and "招待コード" in res.json()["detail"]
     res = anon.post("/auth/register", json={"username": "bob", "password": "password-b", "invite_code": "NOPE"})
@@ -60,7 +60,7 @@ def test_login_logout(client):
     assert anon.post("/auth/login", json={"username": "alice", "password": "wrong-pass"}).status_code == 401
     assert anon.post("/auth/login", json={"username": "nobody", "password": "wrong-pass"}).json()["detail"] == "ユーザー名かパスワードが違います"
     res = anon.post("/auth/login", json={"username": "alice", "password": "password-a"})
-    assert res.status_code == 200 and res.json() == {"id": 1, "username": "alice", "slack_linked": False}
+    assert res.status_code == 200 and res.json() == {"id": 1, "username": "alice", "slack_linked": False, "github_login": None}
     # Cookie は HttpOnly
     assert "httponly" in res.headers["set-cookie"].lower()
     assert anon.get("/auth/me").json()["username"] == "alice"
@@ -86,7 +86,7 @@ def test_first_user_takes_over_existing_data(client):
         conn.execute("INSERT INTO shelf (user_id, paper_id, tags, created_at) VALUES (NULL, %s, '{nlp}', now())", (pid,))
         conn.execute("INSERT INTO watches (user_id, query, created_at) VALUES (NULL, 'rag', now())")
     first = TestClient(main.app)
-    assert first.get("/auth/setup").json() == {"needs_setup": True}
+    assert first.get("/auth/setup").json()["needs_setup"] is True
     assert first.post("/auth/register", json={"username": "carol", "password": "password-c"}).status_code == 201
     assert [(p["arxiv_id"], p["tags"]) for p in first.get("/papers").json()] == [("1706.03762", ["nlp"])]
     assert [w["query"] for w in first.get("/watches").json()] == ["rag"]

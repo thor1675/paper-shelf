@@ -131,7 +131,7 @@ def _start_session(session: Session, response: Response, user: User) -> None:
 
 
 def _me(user: User) -> Me:
-    return Me(id=user.id, username=user.username, slack_linked=user.slack_user_id is not None)
+    return Me(id=user.id, username=user.username, slack_linked=user.slack_user_id is not None, github_login=user.github_login)
 
 
 # --- 登録・ログイン・ログアウト ---
@@ -139,7 +139,9 @@ def _me(user: User) -> Me:
 
 @router.get("/auth/setup", response_model=SetupState)
 def setup_state(session: Session = Depends(get_session)):
-    return SetupState(needs_setup=session.exec(select(User.id)).first() is None)
+    import github_oauth
+
+    return SetupState(needs_setup=session.exec(select(User.id)).first() is None, github_enabled=github_oauth.enabled())
 
 
 @router.post("/auth/register", response_model=Me, status_code=201)

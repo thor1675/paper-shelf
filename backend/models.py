@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 from typing import Literal
 
 from pydantic import computed_field, field_validator, model_validator
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, Column, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlmodel import Field, SQLModel
 
@@ -29,6 +29,9 @@ class User(SQLModel, table=True):
     password_hash: str = Field(max_length=256)
     # 紐づけた Slack のユーザー ID（U から始まる）。紐づけた人だけが Slack から保存できる
     slack_user_id: str | None = Field(default=None, unique=True, max_length=32)
+    # 紐づけた GitHub アカウント（OAuth2 でログインできる）。id は変わらないが login（名前）は変えられるので id で引く
+    github_id: int | None = Field(default=None, sa_column=Column(BigInteger, unique=True, nullable=True))
+    github_login: str | None = Field(default=None, max_length=64)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class UserSession(SQLModel, table=True):
@@ -123,10 +126,13 @@ class Me(SQLModel):
     id: int
     username: str
     slack_linked: bool
+    github_login: str | None = None
 
 class SetupState(SQLModel):
     # まだ誰も登録していない（最初の 1 人は招待コード無しで登録できる）
     needs_setup: bool
+    # GitHub でログインできる（GITHUB_CLIENT_ID と GITHUB_CLIENT_SECRET が設定されている）
+    github_enabled: bool = False
 
 class CodeRead(SQLModel):
     code: str

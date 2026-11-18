@@ -27,6 +27,11 @@ services:
       - TRANSLATOR_URL=http://translator:8001
       # slackbot からの操作を受け付けるための合言葉（slackbot と同じ値）
       - BOT_TOKEN=${BOT_TOKEN:-}
+      # GitHub でのログイン（OAuth2）。GitHub の OAuth App の値。空なら「GitHub でログイン」は出ない
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - PUBLIC_API_URL=http://localhost:8000
+      - FRONTEND_URL=http://localhost:3000
     depends_on:
       db:
         condition: service_healthy

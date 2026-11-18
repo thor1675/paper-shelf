@@ -26,8 +26,8 @@ PDF 本文は扱わず、arXiv API から取れるメタデータ（タイトル
 
 ```
 paper-shelf/
-├── docker-compose.yml   4 つのコンテナの設定
-├── frontend/            Next.js 16（App Router / TypeScript / Tailwind）
+├── docker-compose.yml   5 つのコンテナの設定
+├── frontend/            Next.js 16（App Router / TypeScript / Tailwind / shadcn/ui）
 ├── backend/             FastAPI + SQLModel + Alembic
 │   ├── main.py          API
 │   ├── models.py        テーブルと入出力の形
@@ -76,6 +76,25 @@ docker compose up -d --build
 3. ユーザー名とパスワードは「設定」で変えられます（今のパスワードが要ります）。パスワードを変えると、ほかの端末ではログインし直しになります
 
 パスワードは scrypt でハッシュにして保存し、ログイン中かどうかは HttpOnly の Cookie で見ます（30 日間有効）。
+
+#### GitHub でログイン（OAuth2・任意）
+
+設定画面で GitHub アカウントを紐づけると、ログイン画面の「GitHub でログイン」で入れます。OAuth2 の認可コードフローに PKCE を付けて使い、GitHub からは公開されている ID と名前だけを受け取ります（アクセストークンは保存しません）。
+
+1. GitHub の Settings → Developer settings → OAuth Apps →「New OAuth App」で作る
+   - Homepage URL: `http://localhost:3000`
+   - Redirect URI（古い画面では Authorization callback URL）: `http://localhost:8000/auth/github/callback`。「Allow wildcard matching」は外したままにする
+2. Client ID と、「Generate a new client secret」で作った値を `.env` に書く（Client Secret は作ったときに一度しか表示されない）
+
+   ```
+   GITHUB_CLIENT_ID=...
+   GITHUB_CLIENT_SECRET=...
+   ```
+
+3. `docker compose up -d backend` で backend を作り直す
+4. ユーザー名とパスワードでログインし、設定 →「GitHub と紐づける」
+
+紐づけていない GitHub アカウントではログインできません（新規登録には招待コードが要るため）。
 
 ## テスト
 

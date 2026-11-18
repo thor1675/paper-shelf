@@ -27,6 +27,7 @@ from arxiv import (
 )
 from auth import current_user
 from auth import router as auth_router
+from github_oauth import router as github_router
 from bibtex import to_bibtex
 from citations import router as citations_router
 from citations import sync_new_papers
@@ -69,6 +70,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 
 app = FastAPI(title="PAPER - Shelf API")
 app.include_router(auth_router)
+app.include_router(github_router)
 app.include_router(citations_router)
 
 # ブラウザ（localhost:3000 の frontend）から直接 fetch できるようにする。
