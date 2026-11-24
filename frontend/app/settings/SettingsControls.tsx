@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { useConfirm } from "@/components/useConfirm";
 import { GitHubMark } from "@/components/GitHubMark";
+import { SlackMark } from "@/components/SlackMark";
 import { Button } from "@/components/ui/button";
 import { BROWSER_API_URL, apiFetch, errorMessage, githubStartUrl } from "@/lib/api";
 
@@ -52,7 +53,10 @@ export function SlackLinkBox({ linked }: { linked: boolean }) {
       {dialog}
       {linked ? (
         <div className="flex items-center gap-3">
-          <span>Slack と紐づけ済み</span>
+          <span className="flex items-center gap-1.5">
+            <SlackMark />
+            Slack と紐づけ済み
+          </span>
           <Button variant="link" size="sm" className="text-muted-foreground" onClick={unlink}>
             紐づけを解除
           </Button>
@@ -60,6 +64,7 @@ export function SlackLinkBox({ linked }: { linked: boolean }) {
       ) : (
         <div>
           <Button variant="outline" size="sm" onClick={issue}>
+            <SlackMark />
             紐づけのコードを発行
           </Button>
         </div>
