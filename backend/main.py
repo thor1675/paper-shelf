@@ -31,6 +31,7 @@ from github_oauth import router as github_router
 from bibtex import to_bibtex
 from citations import router as citations_router
 from citations import sync_new_papers
+from config import FRONTEND_URL, TRANSLATOR_URL
 from db import get_session
 import translation
 from models import (
@@ -73,11 +74,11 @@ app.include_router(auth_router)
 app.include_router(github_router)
 app.include_router(citations_router)
 
-# ブラウザ（localhost:3000 の frontend）から直接 fetch できるようにする。
+# ブラウザ（FRONTEND_URL の画面）から直接 fetch できるようにする（公開版は /api を通すので同じ送り元になり、使われない）。
 # ログインの Cookie を送ってもらうため allow_credentials を付ける（このとき送り元は * にできない）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -658,6 +659,8 @@ def start_translation(
 ):
     """翻訳を始める。訳し終えていれば（force でなければ）そのまま返す。訳している最中なら二重に始めない"""
     paper = _paper_or_404(session, user, paper_id)
+    if not TRANSLATOR_URL:
+        raise HTTPException(503, "この環境では翻訳を使えません（翻訳サーバーがありません）")
     t = session.get(Translation, paper.arxiv_id)
     if t and not translation.is_stale(t) and (t.status in ("queued", "running") or (t.status == "done" and not force)):
         return _status(t)
@@ -674,7 +677,7 @@ def start_translation(
 # 訳した HTML はスクリプトを一切動かさない（arXiv から取ってきたものなので）。画像と CSS は arXiv から読む
 TRANSLATION_CSP = (
     "default-src 'none'; img-src https: data:; style-src 'unsafe-inline' https:; font-src https: data:; "
-    "frame-ancestors http://localhost:3000"
+    f"frame-ancestors {FRONTEND_URL}"
 )
 
 

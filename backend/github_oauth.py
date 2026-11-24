@@ -25,15 +25,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
+from config import API_PATH_PREFIX, COOKIE_SECURE, FRONTEND_URL, PUBLIC_API_URL
 from auth import _start_session, browser_user, current_user
 from db import get_session
 from models import User
 
 GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", "")
 GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET", "")
-# GitHub に登録した戻り先（Authorization callback URL）と同じにする
-PUBLIC_API_URL = os.environ.get("PUBLIC_API_URL", "http://localhost:8000")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
 AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 TOKEN_URL = "https://github.com/login/oauth/access_token"
@@ -41,6 +39,7 @@ USER_URL = "https://api.github.com/user"
 
 STATE_COOKIE = "ps_oauth"
 STATE_MINUTES = 10
+STATE_PATH = f"{API_PATH_PREFIX}/auth/github"
 
 router = APIRouter(tags=["auth"])
 
@@ -67,7 +66,7 @@ def _back(path: str, **params: str) -> RedirectResponse:
     """画面（frontend）に戻す。エラーは ?github_error= で伝え、画面が日本語にする"""
     query = f"?{urlencode(params)}" if params else ""
     res = RedirectResponse(f"{FRONTEND_URL}{path}{query}", status_code=303)
-    res.delete_cookie(STATE_COOKIE, path="/auth/github")
+    res.delete_cookie(STATE_COOKIE, path=STATE_PATH, secure=COOKIE_SECURE, httponly=True, samesite="lax")
     return res
 
 
@@ -138,7 +137,8 @@ def github_start(request: Request, mode: str = "login", next: str | None = None,
         max_age=STATE_MINUTES * 60,
         httponly=True,
         samesite="lax",
-        path="/auth/github",
+        secure=COOKIE_SECURE,
+        path=STATE_PATH,
     )
     return res
 

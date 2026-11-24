@@ -4,6 +4,7 @@ import re
 
 import pytest
 
+import main
 import translation
 from test_api import add
 
@@ -183,3 +184,11 @@ def test_prepare_keeps_svg_figures_as_img():
     assert "<object" not in out and "evil.swf" not in out
     img = soup.find("img", id="S1.F1.g1")
     assert img["src"] == "https://arxiv.org/html/2409.11136v1/fig.svg" and img["width"] == "476"
+
+
+def test_translation_disabled_without_translator(client, fake_sources, monkeypatch):
+    # 公開版（翻訳サーバーが無い）では始められないことを、理由付きで返す
+    monkeypatch.setattr(main, "TRANSLATOR_URL", "")
+    p = add(client, "1706.03762")
+    res = client.post(f"/papers/{p['id']}/translation")
+    assert res.status_code == 503 and "翻訳を使えません" in res.json()["detail"]

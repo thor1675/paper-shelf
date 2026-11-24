@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from sqlalchemy import update
 from sqlmodel import Session, col, select
 
+from config import COOKIE_SECURE
 from db import get_session
 from models import (
     BotWatch,
@@ -127,7 +128,7 @@ def _start_session(session: Session, response: Response, user: User) -> None:
     session.add(UserSession(token_hash=_hash_token(token), user_id=user.id, expires_at=_now() + timedelta(days=SESSION_DAYS)))
     session.commit()
     # HttpOnly: 画面のスクリプトから読めないようにする。SameSite=Lax: ほかのサイトからの POST では送られない
-    response.set_cookie(COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True, samesite="lax", path="/")
+    response.set_cookie(COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True, samesite="lax", secure=COOKIE_SECURE, path="/")
 
 
 def _me(user: User) -> Me:
@@ -186,7 +187,7 @@ def logout(request: Request, session: Session = Depends(get_session)):
         session.delete(s)
         session.commit()
     response = Response(status_code=204)
-    response.delete_cookie(COOKIE, path="/")
+    response.delete_cookie(COOKIE, path="/", secure=COOKIE_SECURE, httponly=True, samesite="lax")
     return response
 
 

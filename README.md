@@ -142,6 +142,59 @@ docker compose up -d slackbot
 docker compose run --rm slackbot python bot.py notify   # 9 時を待たずに 1 回だけ試す
 ```
 
+## 公開する（Vercel + Supabase + Render）
+
+手元の Docker とは別に、無料の枠だけで公開版を動かせます。
+
+| 部分 | 置き場所 |
+| --- | --- |
+| 画面（Next.js） | Vercel（`frontend/`） |
+| API（FastAPI） | Render（`backend/` の Dockerfile、`render.yaml`） |
+| DB（PostgreSQL） | Supabase |
+
+ブラウザは API を Vercel の `/api` から呼び、Vercel が Render へ中継します（`frontend/next.config.ts`）。
+Vercel と Render はドメインが違うので、直接呼ぶとログインの Cookie がブラウザに弾かれるためです。
+
+公開版では次のものは動きません。
+- 翻訳：FuguMT が無料のサーバーのメモリに収まらないため。翻訳ボタンを押すと「この環境では翻訳を使えません」と出ます
+- Slack 連携：ボットを常に動かしておく必要があるため
+- Render の無料枠は 15 分使わないと止まり、次に開いたときだけ 1 分ほど待ちます
+
+### 1. Supabase で DB を作る
+
+1. New project で作る。Region は Southeast Asia (Singapore)
+2. 上の「Connect」→「Session pooler」の URI をコピーし、`[YOUR-PASSWORD]` をプロジェクトのパスワードに置き換える（`DATABASE_URL` に使う）
+   - 「Direct connection」は IPv6 だけなので Render からつながらない。「Transaction pooler」は使わない
+
+表は API が起動するときに Alembic が作るので、Supabase で作る必要はありません。
+
+### 2. Render で API を立てる
+
+1. New → Blueprint でこのリポジトリを選ぶ（`render.yaml` を読む）
+2. 聞かれた値を入れる。Vercel の URL はまだ分からないので、`FRONTEND_URL` と `PUBLIC_API_URL` は仮の値にして、手順 3 のあとで直す
+3. 立ち上がったら `https://<Render の名前>.onrender.com/health` が `{"status":"ok"}` を返すか確かめる
+
+### 3. Vercel で画面を立てる
+
+1. Add New → Project でこのリポジトリを選び、Root Directory を `frontend` にする
+2. Environment Variables に入れる
+   - `API_URL` = `https://<Render の名前>.onrender.com`
+   - `NEXT_PUBLIC_API_URL` = `/api`
+3. Deploy する。決まった URL（例 `https://paper-shelf.vercel.app`）を、Render の `FRONTEND_URL` に、その URL + `/api` を `PUBLIC_API_URL` に入れて、Render を再起動する
+
+### 4. 最初の利用者を作る
+
+公開版の URL を開き、新規登録で最初の 1 人を作ります（DB が空のときだけ招待コード無しで登録できます）。
+**公開したらすぐに登録してください。** それまでは、URL を知っている人なら誰でも最初の 1 人になれます。
+
+### 5. GitHub でログイン（任意）
+
+GitHub の OAuth App は戻り先を 1 つしか登録できないので、公開版用にもう 1 つ作ります。
+- Homepage URL: Vercel の URL
+- Authorization callback URL: Vercel の URL + `/api/auth/github/callback`
+
+できた Client ID と Client secret を Render の `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` に入れます。
+
 ## 決めていること
 
 - arXiv ID はバージョンを落とした形（`1706.03762`）で保存し、同じ論文は二重登録できない

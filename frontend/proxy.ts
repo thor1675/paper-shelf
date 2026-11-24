@@ -14,6 +14,7 @@ export default function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // 画像や JS などの静的なファイルには使わない
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|ico)$).*)"],
+  // 画像や JS などの静的なファイルには使わない。
+  // /api は backend への中継（公開版）で、ログインの確認は backend がする（ここで回すと API の応答がログイン画面になる）
+  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|ico)$).*)"],
 };

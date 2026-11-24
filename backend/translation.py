@@ -5,7 +5,6 @@ arXiv の HTML 版を取ってきて、構造（見出し・数式・図・表�
 
 import html
 import logging
-import os
 import re
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
@@ -16,7 +15,7 @@ from sqlmodel import Session
 
 from models import Translation
 
-TRANSLATOR_URL = os.environ.get("TRANSLATOR_URL", "http://translator:8001")
+from config import TRANSLATOR_URL
 # 1 回に translator へ送る段落の数
 BATCH = 20
 # 進み具合が更新されないまま、これだけたった翻訳は止まったものとみなす（backend の再起動など）

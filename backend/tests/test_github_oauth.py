@@ -129,3 +129,14 @@ def test_next_cannot_leave_the_app(client, github):
     anon = TestClient(main.app)
     _, q = start(anon, next_path="//evil.example")
     assert callback(anon, q["state"][0]).headers["location"] == "http://localhost:3000/"
+
+
+def test_start_behind_vercel_proxy(client, github, monkeypatch):
+    # 公開版: ブラウザは https://<画面>/api を通して API を呼ぶので、戻り先と Cookie のパスに /api が付く
+    monkeypatch.setattr(github_oauth, "PUBLIC_API_URL", "https://shelf.example/api")
+    monkeypatch.setattr(github_oauth, "STATE_PATH", "/api/auth/github")
+    monkeypatch.setattr(github_oauth, "COOKIE_SECURE", True)
+    res, q = start(TestClient(main.app))
+    assert q["redirect_uri"] == ["https://shelf.example/api/auth/github/callback"]
+    cookie = res.headers["set-cookie"]
+    assert "Path=/api/auth/github" in cookie and "secure" in cookie.lower()

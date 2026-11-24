@@ -1,0 +1,32 @@
+# Render の Blueprint（New → Blueprint でこのリポジトリを選ぶと、この内容で API が作られる）
+# 値が sync: false のものは、作るときに Render の画面で入れる（秘密の値はリポジトリに書かない）
+services:
+  - type: web
+    name: paper-shelf-api
+    runtime: docker
+    plan: free
+    # Supabase と同じシンガポールに置く（1 回の画面表示で DB に何度も問い合わせるので、近い方が速い）
+    region: singapore
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      # Supabase の Connect → Session pooler の URI（パスワードを入れたもの）
+      - key: DATABASE_URL
+        sync: false
+      # Vercel の URL（例: https://paper-shelf.vercel.app）
+      - key: FRONTEND_URL
+        sync: false
+      # ブラウザから見た API の URL。Vercel の /api を通すので FRONTEND_URL + /api
+      - key: PUBLIC_API_URL
+        sync: false
+      # 公開版用の GitHub OAuth App の値（任意）
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: OPENALEX_MAILTO
+        sync: false
+      # 無料のサーバーには翻訳（FuguMT）が載らないので、公開版では翻訳を使わない
+      - key: TRANSLATOR_URL
+        value: ""
